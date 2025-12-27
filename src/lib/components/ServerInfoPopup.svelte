@@ -182,10 +182,10 @@
 		position: fixed;
 		z-index: 1000;
 		width: 300px;
-		background: rgba(22, 27, 34, 0.95);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius-lg);
-		box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+		box-shadow: var(--shadow-lg);
 		overflow: hidden;
 		animation: popIn 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 		pointer-events: auto;
@@ -264,19 +264,19 @@
 		border-radius: 12px;
 		object-fit: cover;
 		border: 3px solid var(--bg-card);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-md);
 	}
 
 	.server-icon-placeholder {
 		width: 56px;
 		height: 56px;
 		border-radius: 12px;
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+		background: var(--bg-secondary);
 		border: 3px solid var(--bg-card);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-md);
 	}
 
 	.server-icon-placeholder svg {

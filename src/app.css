@@ -13,26 +13,6 @@
 	--accent-900: #42580f;
 	--accent-950: #223201;
 
-	/* Theme colors */
-	--bg-primary: #1a1a1a;
-	--bg-secondary: #242424;
-	--bg-tertiary: #2a2a2a;
-	--bg-card: rgba(255, 255, 255, 0.05);
-	--bg-card-hover: rgba(255, 255, 255, 0.08);
-
-	--fg-primary: #eee;
-	--fg-secondary: rgba(255, 255, 255, 0.7);
-	--fg-muted: rgba(255, 255, 255, 0.5);
-
-	--border-color: rgba(255, 255, 255, 0.1);
-	--border-color-hover: rgba(255, 255, 255, 0.2);
-
-	/* Shadows */
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-	--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-	--shadow-glow: 0 0 20px rgba(134, 179, 0, 0.3);
-
 	/* Transitions */
 	--transition-fast: 0.15s ease;
 	--transition-normal: 0.25s ease;
@@ -46,6 +26,54 @@
 
 	/* Font */
 	--font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+	/* Default: Light theme */
+	--bg-primary: #eee;
+	--bg-secondary: #e5e5e5;
+	--bg-tertiary: #ddd;
+	--bg-card: #fff;
+	--bg-card-hover: #fff;
+
+	--fg-primary: #222;
+	--fg-secondary: rgba(0, 0, 0, 0.7);
+	--fg-muted: rgba(0, 0, 0, 0.5);
+
+	--border-color: rgba(0, 0, 0, 0.1);
+	--border-color-hover: rgba(0, 0, 0, 0.2);
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+	--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+	--shadow-glow: 0 0 20px rgba(134, 179, 0, 0.2);
+
+	color-scheme: light;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg-primary: #1a1a1a;
+		--bg-secondary: #242424;
+		--bg-tertiary: #2a2a2a;
+		--bg-card: rgba(255, 255, 255, 0.05);
+		--bg-card-hover: rgba(255, 255, 255, 0.08);
+
+		--fg-primary: #eee;
+		--fg-secondary: rgba(255, 255, 255, 0.7);
+		--fg-muted: rgba(255, 255, 255, 0.5);
+
+		--border-color: rgba(255, 255, 255, 0.1);
+		--border-color-hover: rgba(255, 255, 255, 0.2);
+
+		/* Shadows */
+		--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+		--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+		--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+		--shadow-glow: 0 0 20px rgba(134, 179, 0, 0.3);
+
+		color-scheme: dark;
+	}
 }
 
 * {
@@ -80,12 +108,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.2);
+	background: rgba(0, 0, 0, 0.2);
 	border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: rgba(255, 255, 255, 0.3);
+	background: rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+	::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.2);
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.3);
+	}
 }
 
 /* Focus styles */
@@ -102,28 +140,48 @@ button {
 
 /* Link styles */
 a {
-	color: var(--accent-400);
+	color: var(--accent-700);
 	text-decoration: none;
 	transition: color var(--transition-fast);
 }
 
 a:hover {
-	color: var(--accent-300);
+	color: var(--accent-600);
+}
+
+@media (prefers-color-scheme: dark) {
+	a {
+		color: var(--accent-400);
+	}
+
+	a:hover {
+		color: var(--accent-300);
+	}
 }
 
 /* Glass morphism utilities */
 .glass {
-	background: rgba(255, 255, 255, 0.05);
+	background: rgba(255, 255, 255, 0.7);
 	backdrop-filter: blur(12px);
 	-webkit-backdrop-filter: blur(12px);
 	border: 1px solid var(--border-color);
 }
 
 .glass-strong {
-	background: rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.85);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
 	border: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+	.glass {
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.glass-strong {
+		background: rgba(255, 255, 255, 0.08);
+	}
 }
 
 /* Animation keyframes */

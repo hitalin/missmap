@@ -329,7 +329,7 @@
 <style>
 	.page {
 		min-height: 100vh;
-		background: linear-gradient(180deg, var(--bg-primary) 0%, #0d1117 100%);
+		background: var(--bg-primary);
 	}
 
 	/* Layout */
