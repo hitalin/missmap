@@ -431,28 +431,6 @@
 		</button>
 	</div>
 
-	<!-- Legend -->
-	<div class="graph-legend">
-		<div class="legend-item">
-			<span class="legend-dot seed"></span>
-			<span>視点サーバー</span>
-		</div>
-		<div class="legend-item">
-			<span class="legend-dot"></span>
-			<span>ノード大きさ＝ユーザー数</span>
-		</div>
-		<div class="legend-section">
-			<div class="legend-title">連合の強さ（距離・太さ）</div>
-			<div class="legend-item">
-				<span class="legend-line thick"></span>
-				<span>強い（近く・太い）</span>
-			</div>
-			<div class="legend-item">
-				<span class="legend-line thin"></span>
-				<span>弱い（遠く・細い）</span>
-			</div>
-		</div>
-	</div>
 </div>
 
 <style>
@@ -511,72 +489,6 @@
 		height: 18px;
 	}
 
-	/* Legend */
-	.graph-legend {
-		position: absolute;
-		bottom: 1rem;
-		left: 1rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		background: var(--bg-card);
-		backdrop-filter: blur(12px);
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-md);
-		font-size: 0.75rem;
-		color: var(--fg-muted);
-		z-index: 10;
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.legend-dot {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background: var(--accent-500);
-	}
-
-	.legend-dot.seed {
-		border: 2px solid white;
-		box-shadow: 0 0 8px rgba(134, 179, 0, 0.5);
-	}
-
-	.legend-section {
-		margin-top: 0.5rem;
-		padding-top: 0.5rem;
-		border-top: 1px solid var(--border-color);
-	}
-
-	.legend-title {
-		font-size: 0.7rem;
-		font-weight: 600;
-		color: var(--fg-secondary);
-		margin-bottom: 0.375rem;
-	}
-
-	.legend-line {
-		width: 24px;
-		height: 3px;
-		background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
-		border-radius: 2px;
-	}
-
-	.legend-line.thick {
-		height: 8px;
-		opacity: 0.9;
-	}
-
-	.legend-line.thin {
-		height: 2px;
-		opacity: 0.4;
-	}
-
 	@media (max-width: 768px) {
 		.graph-controls {
 			top: 0.75rem;
@@ -591,13 +503,6 @@
 		.control-btn svg {
 			width: 16px;
 			height: 16px;
-		}
-
-		.graph-legend {
-			bottom: 0.75rem;
-			left: 0.75rem;
-			padding: 0.5rem 0.75rem;
-			font-size: 0.7rem;
 		}
 	}
 </style>
