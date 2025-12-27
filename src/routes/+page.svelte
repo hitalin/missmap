@@ -554,10 +554,6 @@
 			width: 100%;
 		}
 
-		.stats-card {
-			order: -1;
-		}
-
 		.app-title {
 			font-size: 1.1rem;
 		}

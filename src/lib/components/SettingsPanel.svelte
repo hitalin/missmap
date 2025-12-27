@@ -187,12 +187,6 @@
 		letter-spacing: -0.01em;
 	}
 
-	.description {
-		margin: 0 0 0.625rem;
-		font-size: 0.75rem;
-		color: var(--fg-muted);
-	}
-
 	/* View Mode Toggle */
 	.view-mode-toggle {
 		display: flex;

@@ -87,32 +87,46 @@
 			}
 		}
 
-		// 重複エッジを除去し、重みを計算
-		const edgeMap = new Map<string, { source: string; target: string; weight: number }>();
+		// まず全エッジの活動量を収集して最大値・最小値を取得
+		const rawActivities: { source: string; target: string; activity: number }[] = [];
 		for (const fed of federations) {
-			// 種サーバーが関与するエッジは常に作成
 			const involveSeed = fed.sourceHost === seedServer || fed.targetHost === seedServer;
-			// それ以外は両方が既知の場合のみ
 			if (!involveSeed && (!serverHosts.has(fed.sourceHost) || !serverHosts.has(fed.targetHost))) {
 				continue;
 			}
-
-			// 双方向エッジを正規化（アルファベット順で小さい方をsourceに）
 			const [source, target] =
 				fed.sourceHost < fed.targetHost
 					? [fed.sourceHost, fed.targetHost]
 					: [fed.targetHost, fed.sourceHost];
-			const key = `${source}-${target}`;
+			// usersCount: リモートフォローユーザー数、notesCount: 取得投稿数
+			const activity = fed.usersCount + fed.notesCount / 10;
+			rawActivities.push({ source, target, activity });
+		}
 
+		// 活動量の最大値・最小値を計算（正規化用）
+		const activities = rawActivities.map(r => r.activity);
+		const maxActivity = Math.max(...activities, 1);
+		const minActivity = Math.min(...activities, 0);
+		const activityRange = maxActivity - minActivity || 1;
+
+		// 重複エッジを除去し、正規化した重みを計算
+		const edgeMap = new Map<string, { source: string; target: string; weight: number; rawActivity: number }>();
+		for (const item of rawActivities) {
+			const key = `${item.source}-${item.target}`;
 			const existing = edgeMap.get(key);
-			// リモートユーザー数に基づいて重み計算（1〜15の範囲）
-			const activity = fed.usersCount + fed.notesCount / 50;
-			const rawWeight = Math.log10(Math.max(activity, 1)) * 3;
-			const weight = Math.min(Math.max(rawWeight, 1), 15);
+
+			// 0-1に正規化してから1-30の範囲にスケール
+			// 平方根を使って中間値をより目立たせる
+			const normalized = Math.sqrt((item.activity - minActivity) / activityRange);
+			const weight = 1 + normalized * 29; // 1-30
+
 			if (existing) {
-				existing.weight = Math.max(existing.weight, weight);
+				if (item.activity > existing.rawActivity) {
+					existing.weight = weight;
+					existing.rawActivity = item.activity;
+				}
 			} else {
-				edgeMap.set(key, { source, target, weight });
+				edgeMap.set(key, { source: item.source, target: item.target, weight, rawActivity: item.activity });
 			}
 		}
 
@@ -130,13 +144,18 @@
 			const targetColor = getRepositoryColor(targetRepo ?? null);
 			const edgeColor = blendColors(sourceColor, targetColor);
 
+			// 重みに応じたopacity（0.3〜0.9の範囲）
+			// 強い繋がりはより目立つように
+			const opacity = Math.min(0.3 + (e.weight / 30) * 0.6, 0.9);
+
 			return {
 				data: {
 					id: `${e.source}-${e.target}`,
 					source: e.source,
 					target: e.target,
 					weight: e.weight,
-					color: edgeColor
+					color: edgeColor,
+					opacity
 				}
 			};
 		});
@@ -155,6 +174,17 @@
 		// サーバー情報のマップを作成
 		const serverMap = new Map(servers.map((s) => [s.host, s]));
 
+		// ノードサイズの正規化用に全サーバーのユーザー数を収集
+		const allUserCounts = servers
+			.filter(s => connectedHosts.has(s.host))
+			.map(s => s.usersCount ?? 1);
+		const maxUsers = Math.max(...allUserCounts, 1);
+		const minUsers = Math.min(...allUserCounts, 1);
+		// 対数スケールで正規化（ユーザー数の差が極端なため）
+		const logMaxUsers = Math.log10(maxUsers + 1);
+		const logMinUsers = Math.log10(minUsers + 1);
+		const logUserRange = logMaxUsers - logMinUsers || 1;
+
 		const nodes: Array<{ data: Record<string, unknown> }> = [];
 
 		for (const host of connectedHosts) {
@@ -168,24 +198,25 @@
 			let hasIcon: boolean;
 
 			if (server) {
-				// 既知のサーバー
+				// 既知のサーバー - 対数スケールで正規化してサイズ計算
 				const users = server.usersCount ?? 1;
-				size = Math.min(Math.max(20 + Math.log10(Math.max(users, 1)) * 20, 20), 120);
+				const logUsers = Math.log10(users + 1);
+				// 0-1に正規化
+				const normalized = (logUsers - logMinUsers) / logUserRange;
+				// 20-200pxの範囲にマッピング（差をより明確に）
+				size = 20 + normalized * 180;
+
 				label = server.name ?? server.host;
 				repositoryUrl = server.repositoryUrl;
 				iconUrl = server.iconUrl || `https://${host}/favicon.ico`;
 				hasIcon = !!server.iconUrl;
 			} else {
 				// 未知のサーバー（種サーバーからの連合先）
-				size = 25;
+				size = 15;
 				label = host;
 				repositoryUrl = null;
 				iconUrl = `https://${host}/favicon.ico`;
 				hasIcon = false;
-			}
-
-			if (isSeed) {
-				size = Math.max(size, 80);
 			}
 
 			nodes.push({
@@ -202,6 +233,15 @@
 			});
 		}
 
+		// ノードサイズに応じたフォントサイズを計算
+		for (const node of nodes) {
+			const size = node.data.size as number;
+			// サイズに比例したフォントサイズ（8px〜16px）
+			node.data.fontSize = Math.min(Math.max(size / 8, 8), 16);
+			// ボーダー幅もサイズに応じて
+			node.data.borderWidth = Math.min(Math.max(size / 20, 2), 6);
+		}
+
 		cy = cytoscape({
 			container,
 			elements: [...nodes, ...edges],
@@ -213,13 +253,13 @@
 						label: 'data(label)',
 						width: 'data(size)',
 						height: 'data(size)',
-						'font-size': '10px',
+						'font-size': 'data(fontSize)',
 						color: '#fff',
 						'text-outline-color': '#1a1a2e',
 						'text-outline-width': 2,
 						'text-valign': 'bottom',
 						'text-margin-y': 5,
-						'border-width': 3,
+						'border-width': 'data(borderWidth)',
 						'border-color': 'data(color)',
 						'transition-property': 'border-color, width, height',
 						'transition-duration': 200
@@ -261,7 +301,7 @@
 						width: 'data(weight)',
 						'line-color': 'data(color)',
 						'curve-style': 'bezier',
-						opacity: 0.5,
+						opacity: 'data(opacity)',
 						'transition-property': 'line-color, opacity',
 						'transition-duration': 200
 					}
@@ -278,20 +318,23 @@
 				name: 'cose',
 				animate: true,
 				animationDuration: 1500,
-				nodeRepulsion: () => 20000,
+				nodeRepulsion: () => 30000,
 				idealEdgeLength: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
-					// 重みが大きいほど短く（強い繋がり）
-					return 200 / (weight + 1);
+					// weight: 1-30 → length: 350-30 (線形に反比例)
+					// 重みが大きいほど距離が短い（強い繋がり＝近い）
+					const normalized = (weight - 1) / 29; // 0-1
+					return 350 - normalized * 320; // 350→30
 				},
 				edgeElasticity: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
-					return weight * 100;
+					// 重みに比例してばね力を強く（線形）
+					return weight * 200;
 				},
-				gravity: 1.0,
-				numIter: 1000,
+				gravity: 0.6,
+				numIter: 2000,
 				coolingFactor: 0.95,
-				padding: 50,
+				padding: 60,
 				randomize: false
 			},
 			// インタラクティブ設定
@@ -319,15 +362,16 @@
 			const node = evt.target;
 			const isSeed = node.data('isSeed');
 			const nodeColor = node.data('color');
+			const borderWidth = node.data('borderWidth');
 			node.style({
-				'border-width': isSeed ? 4 : 3,
+				'border-width': isSeed ? borderWidth + 2 : borderWidth,
 				'border-color': isSeed ? '#fff' : nodeColor
 			});
-			// 元の色に戻す
-			node.connectedEdges().forEach((edge: { data: (key: string) => string; style: (styles: Record<string, unknown>) => void }) => {
+			// 元の色とopacityに戻す
+			node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
 				edge.style({
 					'line-color': edge.data('color'),
-					opacity: 0.5
+					opacity: edge.data('opacity')
 				});
 			});
 		});
@@ -394,8 +438,19 @@
 			<span>視点サーバー</span>
 		</div>
 		<div class="legend-item">
-			<span class="legend-line"></span>
-			<span>連合関係（太さ＝強度）</span>
+			<span class="legend-dot"></span>
+			<span>ノード大きさ＝ユーザー数</span>
+		</div>
+		<div class="legend-section">
+			<div class="legend-title">連合の強さ（距離・太さ）</div>
+			<div class="legend-item">
+				<span class="legend-line thick"></span>
+				<span>強い（近く・太い）</span>
+			</div>
+			<div class="legend-item">
+				<span class="legend-line thin"></span>
+				<span>弱い（遠く・細い）</span>
+			</div>
 		</div>
 	</div>
 </div>
@@ -492,11 +547,34 @@
 		box-shadow: 0 0 8px rgba(134, 179, 0, 0.5);
 	}
 
+	.legend-section {
+		margin-top: 0.5rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.legend-title {
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: var(--fg-secondary);
+		margin-bottom: 0.375rem;
+	}
+
 	.legend-line {
 		width: 24px;
 		height: 3px;
 		background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
 		border-radius: 2px;
+	}
+
+	.legend-line.thick {
+		height: 8px;
+		opacity: 0.9;
+	}
+
+	.legend-line.thin {
+		height: 2px;
+		opacity: 0.4;
 	}
 
 	@media (max-width: 768px) {
