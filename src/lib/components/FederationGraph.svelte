@@ -354,9 +354,8 @@
 			selectionType: 'single'
 		});
 
-		// ノードホバー時のハイライト
-		cy.on('mouseover', 'node', (evt) => {
-			const node = evt.target;
+		// ノードのハイライト関数
+		function highlightNode(node: import('cytoscape').NodeSingular) {
 			node.style({
 				'border-width': 4,
 				'border-color': '#fff'
@@ -366,10 +365,9 @@
 				'line-color': 'rgba(255, 255, 255, 0.7)',
 				opacity: 1
 			});
-		});
+		}
 
-		cy.on('mouseout', 'node', (evt) => {
-			const node = evt.target;
+		function unhighlightNode(node: import('cytoscape').NodeSingular) {
 			const isSeed = node.data('isSeed');
 			const nodeColor = node.data('color');
 			const borderWidth = node.data('borderWidth');
@@ -384,13 +382,58 @@
 					opacity: edge.data('opacity')
 				});
 			});
-		});
+		}
 
-		// ノードクリックでサーバーに遷移
-		cy.on('tap', 'node', (evt) => {
-			const host = evt.target.id();
-			window.open(`https://${host}`, '_blank');
-		});
+		// タッチデバイス判定
+		const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+		// 現在ハイライト中のノード
+		let highlightedNode: import('cytoscape').NodeSingular | null = null;
+
+		if (isTouchDevice) {
+			// タッチデバイス: タップでハイライト表示/解除、ダブルタップでリンクを開く
+			cy.on('tap', 'node', (evt) => {
+				const node = evt.target;
+
+				if (highlightedNode && highlightedNode.id() === node.id()) {
+					// 同じノードを再タップ → リンクを開く
+					const host = node.id();
+					window.open(`https://${host}`, '_blank');
+					unhighlightNode(node);
+					highlightedNode = null;
+				} else {
+					// 別のノードをタップ → 前のハイライトを解除して新しいノードをハイライト
+					if (highlightedNode) {
+						unhighlightNode(highlightedNode);
+					}
+					highlightNode(node);
+					highlightedNode = node;
+				}
+			});
+
+			// 背景タップでハイライト解除
+			cy.on('tap', (evt) => {
+				if (evt.target === cy && highlightedNode) {
+					unhighlightNode(highlightedNode);
+					highlightedNode = null;
+				}
+			});
+		} else {
+			// デスクトップ: マウスホバーでハイライト
+			cy.on('mouseover', 'node', (evt) => {
+				highlightNode(evt.target);
+			});
+
+			cy.on('mouseout', 'node', (evt) => {
+				unhighlightNode(evt.target);
+			});
+
+			// ノードクリックでサーバーに遷移
+			cy.on('tap', 'node', (evt) => {
+				const host = evt.target.id();
+				window.open(`https://${host}`, '_blank');
+			});
+		}
 
 		// ノードドラッグ可能に
 		cy.nodes().ungrabify();

@@ -548,10 +548,26 @@
 		.layout {
 			flex-direction: column;
 			height: auto;
+			min-height: calc(100vh - 52px);
 		}
 
 		.sidebar {
 			width: 100%;
+		}
+
+		main {
+			flex: 1;
+			min-height: 400px;
+		}
+
+		.graph-container {
+			min-height: 400px;
+			height: 60vh;
+		}
+
+		.graph-placeholder {
+			min-height: 400px;
+			height: 60vh;
 		}
 
 		.app-title {
