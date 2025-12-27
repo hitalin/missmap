@@ -368,23 +368,25 @@
 				name: 'cose',
 				animate: true,
 				animationDuration: 1500,
-				nodeRepulsion: () => 30000,
+				nodeRepulsion: () => 50000,
 				idealEdgeLength: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
-					// weight: 1-30 → length: 350-30 (線形に反比例)
+					// weight: 1-30 → length: 500-50 (反比例)
 					// 重みが大きいほど距離が短い（強い繋がり＝近い）
+					// より大きな差をつけて芋づる式の距離感を表現
 					const normalized = (weight - 1) / 29; // 0-1
-					return 350 - normalized * 320; // 350→30
+					return 500 - normalized * 450; // 500→50
 				},
 				edgeElasticity: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
-					// 重みに比例してばね力を強く（線形）
-					return weight * 200;
+					// 重みに比例してばね力を強く
+					// 強い繋がりはより強く引き付ける
+					return weight * 300;
 				},
-				gravity: 0.6,
-				numIter: 2000,
-				coolingFactor: 0.95,
-				padding: 60,
+				gravity: 0.15, // 重力を弱めて自然な配置に
+				numIter: 2500,
+				coolingFactor: 0.97,
+				padding: 80,
 				randomize: false
 			},
 			// インタラクティブ設定
@@ -527,16 +529,9 @@
 		cy.nodes().ungrabify();
 
 		cy.on('layoutstop', () => {
-			// 複数の視点サーバーがある場合は全体表示、単一の場合はそれを中心に
+			// レイアウト完了後は常に全体表示（力学モデルの結果を尊重）
 			if (cy) {
-				if (viewpointServers.length > 1) {
-					cy.fit(undefined, 50);
-				} else if (seedServer) {
-					const seedNode = cy.getElementById(seedServer);
-					if (seedNode.length > 0) {
-						cy.center(seedNode);
-					}
-				}
+				cy.fit(undefined, 50);
 			}
 		});
 	}
@@ -567,7 +562,7 @@
 				<line x1="8" y1="11" x2="14" y2="11" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => { if (cy) { if (viewpointServers.length > 1) { cy.fit(undefined, 50); } else if (seedServer) { const node = cy.getElementById(seedServer); if (node.length) cy.center(node); } } }} title="中心に戻る">
+		<button class="control-btn" onclick={() => cy?.fit(undefined, 50)} title="全体表示に戻る">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<circle cx="12" cy="12" r="10" />
 				<circle cx="12" cy="12" r="3" />
