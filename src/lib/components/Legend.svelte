@@ -8,7 +8,7 @@
 			<span class="legend-value">ソフトウェア</span>
 		</div>
 		<div class="legend-item">
-			<span class="legend-label">大きさ</span>
+			<span class="legend-label">ノードの大きさ</span>
 			<span class="legend-value">ユーザー数</span>
 		</div>
 		<div class="legend-item">

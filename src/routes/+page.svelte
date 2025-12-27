@@ -255,6 +255,7 @@
 		<div class="mobile-panels">
 			<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} {isMobile} defaultOpen={false} />
 			<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
+			<Legend />
 		</div>
 	{/if}
 
@@ -507,7 +508,8 @@
 	}
 
 	.mobile-panels :global(.settings-panel),
-	.mobile-panels :global(.filter-panel) {
+	.mobile-panels :global(.filter-panel),
+	.mobile-panels :global(.legend-panel) {
 		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: 0;
@@ -516,16 +518,51 @@
 		border-right: none;
 	}
 
-	.mobile-panels :global(.settings-panel) {
+	.mobile-panels :global(.settings-panel),
+	.mobile-panels :global(.filter-panel) {
 		border-bottom: none;
 	}
 
+	.mobile-panels :global(.legend-panel) {
+		padding: 0.375rem 0.5rem;
+	}
+
+	.mobile-panels :global(.legend-grid) {
+		display: flex;
+		justify-content: space-around;
+		gap: 0;
+	}
+
+	.mobile-panels :global(.legend-item) {
+		flex-direction: row;
+		align-items: center;
+		gap: 0.125rem;
+	}
+
+	.mobile-panels :global(.legend-label) {
+		font-size: 0.6rem;
+	}
+
+	.mobile-panels :global(.legend-value) {
+		font-size: 0.6rem;
+	}
+
+	.mobile-panels :global(.legend-label::after) {
+		content: '=';
+		margin-left: 0.125rem;
+	}
+
 	@media (max-width: 768px) {
+		.page {
+			height: 100vh;
+			overflow: hidden;
+		}
+
 		.layout {
-			display: block;
-			height: auto;
-			min-height: calc(100vh - 100px);
-			padding: 0.5rem;
+			display: flex;
+			flex-direction: column;
+			height: calc(100vh - 70px);
+			padding: 0.25rem;
 		}
 
 		.sidebar {
@@ -533,12 +570,12 @@
 		}
 
 		main {
-			height: 100%;
+			flex: 1;
+			min-height: 0;
 		}
 
 		.graph-container {
-			height: calc(100vh - 120px);
-			min-height: 400px;
+			height: 100%;
 		}
 
 		.graph-placeholder {

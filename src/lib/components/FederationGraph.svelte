@@ -27,6 +27,7 @@
 	let container: HTMLDivElement;
 	let cy: import('cytoscape').Core | null = null;
 	let isDestroying = false;
+	let isInitialized = false;
 
 	let prevServersLength = 0;
 	let prevFederationsLength = 0;
@@ -51,9 +52,28 @@
 		prevServersLength = servers.length;
 		prevFederationsLength = federations.length;
 		prevSeedServer = seedServer;
-		initGraph();
+
+		// ResizeObserverでコンテナの高さが確定したら初期化
+		const resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.contentRect.height > 0 && !isInitialized && !cy) {
+					isInitialized = true;
+					initGraph();
+				}
+			}
+		});
+
+		if (container) {
+			resizeObserver.observe(container);
+			// 既に高さがある場合は即座に初期化
+			if (container.clientHeight > 0) {
+				isInitialized = true;
+				initGraph();
+			}
+		}
 
 		return () => {
+			resizeObserver.disconnect();
 			destroyCy();
 		};
 	});
@@ -75,6 +95,11 @@
 	});
 
 	async function initGraph() {
+		// コンテナが準備されていない場合は中断
+		if (!container || container.clientHeight === 0) {
+			return;
+		}
+
 		const cytoscape = (await import('cytoscape')).default;
 
 		// 既知のサーバーホスト
