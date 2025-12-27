@@ -209,6 +209,7 @@
 	.panel-header-toggle h4 {
 		flex: 1;
 		margin: 0;
+		color: var(--fg-primary);
 	}
 
 	.toggle-icon {

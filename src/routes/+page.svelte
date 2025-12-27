@@ -17,9 +17,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// モバイル用サイドバー開閉状態
+	// モバイル判定
 	let isMobile = $state(false);
-	let sidebarOpen = $state(false);
 
 	// ブラウザ環境でモバイル判定
 	$effect(() => {
@@ -270,17 +269,16 @@
 				<h1 class="app-title">みすまっぷ</h1>
 			</div>
 			<p class="app-subtitle">Misskey サーバー連合マップ</p>
-			{#if isMobile}
-				<button class="menu-btn" onclick={() => sidebarOpen = true} aria-label="メニューを開く">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<line x1="3" y1="6" x2="21" y2="6" />
-						<line x1="3" y1="12" x2="21" y2="12" />
-						<line x1="3" y1="18" x2="21" y2="18" />
-					</svg>
-				</button>
-			{/if}
 		</div>
 	</header>
+
+	<!-- モバイル: パネルをヘッダー下に配置 -->
+	{#if isMobile}
+		<div class="mobile-panels">
+			<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} {isMobile} defaultOpen={false} />
+			<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
+		</div>
+	{/if}
 
 	<div class="layout">
 		<!-- デスクトップ: サイドバー -->
@@ -291,22 +289,6 @@
 			</aside>
 		{/if}
 
-		<!-- モバイル: サイドバーオーバーレイ -->
-		{#if isMobile && sidebarOpen}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="sidebar-overlay" onclick={() => sidebarOpen = false}></div>
-			<aside class="sidebar mobile-open">
-				<button class="sidebar-close" onclick={() => sidebarOpen = false} aria-label="メニューを閉じる">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<line x1="18" y1="6" x2="6" y2="18" />
-						<line x1="6" y1="6" x2="18" y2="18" />
-					</svg>
-				</button>
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} {isMobile} defaultOpen={false} />
-				<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
-			</aside>
-		{/if}
 
 		<main>
 			{#if federationError}
@@ -608,67 +590,27 @@
 		}
 	}
 
-	/* Mobile menu button */
-	.menu-btn {
+	/* Mobile panels - ヘッダー下に配置 */
+	.mobile-panels {
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 40px;
-		height: 40px;
+		flex-direction: column;
+		gap: 0;
+		padding: 0 1rem;
+		background: var(--bg-primary);
+	}
+
+	.mobile-panels :global(.settings-panel),
+	.mobile-panels :global(.filter-panel) {
 		background: var(--bg-card);
 		border: 1px solid var(--border-color);
-		border-radius: var(--radius-md);
-		color: var(--fg-primary);
-		cursor: pointer;
-		transition: all var(--transition-fast);
+		border-radius: 0;
+		margin: 0 -1rem;
+		border-left: none;
+		border-right: none;
 	}
 
-	.menu-btn:hover {
-		background: var(--bg-card-hover);
-		border-color: var(--border-color-hover);
-	}
-
-	.menu-btn svg {
-		width: 20px;
-		height: 20px;
-	}
-
-	/* Mobile sidebar overlay */
-	.sidebar-overlay {
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.6);
-		z-index: 200;
-		animation: fadeIn 0.2s ease-out;
-	}
-
-	.sidebar-close {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		background: var(--bg-card);
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-md);
-		color: var(--fg-primary);
-		cursor: pointer;
-		margin-left: auto;
-		margin-bottom: 0.5rem;
-		transition: all var(--transition-fast);
-	}
-
-	.sidebar-close:hover {
-		background: var(--bg-card-hover);
-		border-color: var(--border-color-hover);
-	}
-
-	.sidebar-close svg {
-		width: 18px;
-		height: 18px;
+	.mobile-panels :global(.settings-panel) {
+		border-bottom: none;
 	}
 
 	@media (max-width: 768px) {
@@ -680,22 +622,6 @@
 
 		.sidebar {
 			display: none;
-		}
-
-		.sidebar.mobile-open {
-			display: flex;
-			position: fixed;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			width: 300px;
-			max-width: 85vw;
-			z-index: 201;
-			padding: 1rem;
-			background: var(--bg-primary);
-			border-left: 1px solid var(--border-color);
-			animation: slideIn 0.2s ease-out;
-			overflow-y: auto;
 		}
 
 		main {
@@ -717,15 +643,6 @@
 		.logo-icon {
 			width: 24px;
 			height: 24px;
-		}
-	}
-
-	@keyframes slideIn {
-		from {
-			transform: translateX(100%);
-		}
-		to {
-			transform: translateX(0);
 		}
 	}
 </style>
