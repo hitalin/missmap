@@ -26,7 +26,6 @@
 	let filter: ServerFilter = $state({ ...DEFAULT_FILTER });
 	let settings: UserSettings = $state({ ...DEFAULT_SETTINGS });
 	let isLoading = $state(false);
-	let localServers = $state<ServerInfo[]>([]);
 	let localFederations = $state<FederationInfo[]>([]);
 	let initialized = $state(false);
 
@@ -89,32 +88,19 @@
 		isLoading = true;
 
 		try {
-			// 種サーバーから連合情報を直接取得
+			// 種サーバーから連合情報を取得
 			const federations = await fetchSeedFederations(settings.seedServer);
 			localFederations = federations;
-
-			// サーバー情報も取得（discover APIから）
-			const res = await fetch('/api/discover', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ seedServer: settings.seedServer })
-			});
-
-			if (res.ok) {
-				const result = (await res.json()) as { servers: ServerInfo[] };
-				localServers = result.servers;
-			}
 		} catch (e) {
-			console.error('Failed to discover servers:', e);
+			console.error('Failed to fetch federations:', e);
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	// 表示するサーバー一覧
+	// 表示するサーバー一覧（SSRで取得したデータを使用）
 	let displayServers = $derived(() => {
-		const servers = localServers.length > 0 ? localServers : (data.servers as ServerInfo[]);
-		return servers;
+		return data.servers as ServerInfo[];
 	});
 
 	// 利用可能なリポジトリURLを抽出
@@ -165,7 +151,7 @@
 </script>
 
 <svelte:head>
-	<title>みすまっち - Misskey サーバー連合マップ</title>
+	<title>みすまっち</title>
 	<meta name="description" content="Misskeyサーバーの連合関係を視覚的に表示するインタラクティブマップ" />
 </svelte:head>
 
