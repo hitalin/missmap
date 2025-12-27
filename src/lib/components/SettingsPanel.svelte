@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { DEFAULT_SETTINGS, type UserSettings, type ViewMode } from '$lib/types';
 
-	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, ssrViewpoints = [] }: {
+	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, ssrViewpoints = [], isMobile = false, defaultOpen = true }: {
 		settings: UserSettings;
 		onAddViewpoint: (host: string) => void;
 		ssrViewpoints: string[];
+		isMobile?: boolean;
+		defaultOpen?: boolean;
 	} = $props();
+
+	let isExpanded = $state(defaultOpen);
 
 	let inputValue = $state('');
 	let isAdding = $state(false);
@@ -52,14 +56,28 @@
 </script>
 
 <div class="settings-panel">
-	<div class="panel-header">
-		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<circle cx="12" cy="12" r="3" />
-			<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-		</svg>
-		<h4>視点サーバー</h4>
-	</div>
+	{#if isMobile}
+		<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
+			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="3" />
+				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+			</svg>
+			<h4>視点サーバー</h4>
+			<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<polyline points="6 9 12 15 18 9" />
+			</svg>
+		</button>
+	{:else}
+		<div class="panel-header">
+			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="3" />
+				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+			</svg>
+			<h4>視点サーバー</h4>
+		</div>
+	{/if}
 
+	{#if !isMobile || isExpanded}
 	<!-- 表示モード切替 -->
 	<div class="view-mode-toggle">
 		<button
@@ -160,6 +178,7 @@
 			視点を追加
 		</button>
 	{/if}
+	{/if}
 </div>
 
 <style>
@@ -172,6 +191,35 @@
 		align-items: center;
 		gap: 0.375rem;
 		margin-bottom: 0.375rem;
+	}
+
+	.panel-header-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		width: 100%;
+		padding: 0;
+		margin-bottom: 0.375rem;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.panel-header-toggle h4 {
+		flex: 1;
+		margin: 0;
+	}
+
+	.toggle-icon {
+		width: 16px;
+		height: 16px;
+		color: var(--fg-muted);
+		transition: transform var(--transition-fast);
+	}
+
+	.toggle-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel-icon {

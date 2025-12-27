@@ -256,7 +256,7 @@
 			</div>
 			<p class="app-subtitle">Misskey サーバー連合マップ</p>
 			{#if isMobile}
-				<button class="menu-btn" onclick={() => sidebarOpen = true}>
+				<button class="menu-btn" onclick={() => sidebarOpen = true} aria-label="メニューを開く">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<line x1="3" y1="6" x2="21" y2="6" />
 						<line x1="3" y1="12" x2="21" y2="12" />
@@ -268,34 +268,32 @@
 	</header>
 
 	<div class="layout">
-		{#if isMobile}
-			<!-- モバイル: グラフを先に表示、サイドバーはオーバーレイ -->
-			<main>
-		{/if}
-
-		{#if !isMobile || sidebarOpen}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			{#if isMobile && sidebarOpen}
-				<div class="sidebar-overlay" onclick={() => sidebarOpen = false}></div>
-			{/if}
-			<aside class="sidebar" class:mobile-open={isMobile && sidebarOpen}>
-				{#if isMobile}
-					<button class="sidebar-close" onclick={() => sidebarOpen = false}>
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<line x1="18" y1="6" x2="6" y2="18" />
-							<line x1="6" y1="6" x2="18" y2="18" />
-						</svg>
-					</button>
-				{/if}
+		<!-- デスクトップ: サイドバー -->
+		{#if !isMobile}
+			<aside class="sidebar">
 				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} />
 				<FilterPanel bind:filter availableRepositories={availableRepositories()} />
 			</aside>
 		{/if}
 
-		{#if !isMobile}
-			<main>
+		<!-- モバイル: サイドバーオーバーレイ -->
+		{#if isMobile && sidebarOpen}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="sidebar-overlay" onclick={() => sidebarOpen = false}></div>
+			<aside class="sidebar mobile-open">
+				<button class="sidebar-close" onclick={() => sidebarOpen = false} aria-label="メニューを閉じる">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</button>
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} {isMobile} defaultOpen={false} />
+				<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
+			</aside>
 		{/if}
+
+		<main>
 			{#if federationError}
 				<div class="error-banner">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">

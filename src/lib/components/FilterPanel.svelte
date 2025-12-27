@@ -4,12 +4,17 @@
 
 	let {
 		filter = $bindable(DEFAULT_FILTER),
-		availableRepositories = []
+		availableRepositories = [],
+		isMobile = false,
+		defaultOpen = true
 	}: {
 		filter: ServerFilter;
 		availableRepositories: string[];
+		isMobile?: boolean;
+		defaultOpen?: boolean;
 	} = $props();
 
+	let isExpanded = $state(defaultOpen);
 	let softwareExpanded = $state(false);
 
 	const scaleOptions: { value: ServerScale; label: string }[] = [
@@ -31,13 +36,26 @@
 </script>
 
 <aside class="filter-panel">
-	<div class="panel-header">
-		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-			<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-		</svg>
-		<h3>フィルター</h3>
-	</div>
+	{#if isMobile}
+		<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
+			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+			</svg>
+			<h3>フィルター</h3>
+			<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<polyline points="6 9 12 15 18 9" />
+			</svg>
+		</button>
+	{:else}
+		<div class="panel-header">
+			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+			</svg>
+			<h3>フィルター</h3>
+		</div>
+	{/if}
 
+	{#if !isMobile || isExpanded}
 	<section>
 		<h4>登録要件</h4>
 		<div class="checkbox-group">
@@ -159,6 +177,7 @@
 			{/each}
 		</div>
 	</section>
+	{/if}
 </aside>
 
 <style>
@@ -173,6 +192,41 @@
 		margin-bottom: 0.75rem;
 		padding-bottom: 0.5rem;
 		border-bottom: 1px solid var(--border-color);
+	}
+
+	.panel-header-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		width: 100%;
+		padding: 0;
+		padding-bottom: 0.5rem;
+		margin-bottom: 0;
+		background: transparent;
+		border: none;
+		border-bottom: 1px solid var(--border-color);
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.panel-header-toggle h3 {
+		flex: 1;
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--fg-primary);
+	}
+
+	.toggle-icon {
+		width: 16px;
+		height: 16px;
+		color: var(--fg-muted);
+		transition: transform var(--transition-fast);
+	}
+
+	.toggle-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel-icon {
