@@ -90,8 +90,9 @@
 		// まず全エッジの活動量を収集して最大値・最小値を取得
 		const rawActivities: { source: string; target: string; activity: number }[] = [];
 		for (const fed of federations) {
-			const involveSeed = fed.sourceHost === seedServer || fed.targetHost === seedServer;
-			if (!involveSeed && (!serverHosts.has(fed.sourceHost) || !serverHosts.has(fed.targetHost))) {
+			// 両方のサーバーがフィルタリング後のサーバーに含まれている場合のみ表示
+			// （視点サーバーは常にserverHostsに含まれている前提）
+			if (!serverHosts.has(fed.sourceHost) || !serverHosts.has(fed.targetHost)) {
 				continue;
 			}
 			const [source, target] =
