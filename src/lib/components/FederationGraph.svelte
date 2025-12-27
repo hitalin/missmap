@@ -87,12 +87,21 @@
 			}
 		}
 
+		// 視点サーバーのセット（MisskeyHubにないサーバーでも表示対象に含める）
+		const viewpointHosts = new Set<string>();
+		for (const fed of federations) {
+			viewpointHosts.add(fed.sourceHost);
+		}
+
 		// まず全エッジの活動量を収集して最大値・最小値を取得
 		const rawActivities: { source: string; target: string; activity: number }[] = [];
 		for (const fed of federations) {
-			// 両方のサーバーがフィルタリング後のサーバーに含まれている場合のみ表示
-			// （視点サーバーは常にserverHostsに含まれている前提）
-			if (!serverHosts.has(fed.sourceHost) || !serverHosts.has(fed.targetHost)) {
+			// エッジの両端がいずれかの条件を満たす場合のみ表示:
+			// 1. MisskeyHubのサーバーリストに含まれている
+			// 2. 視点サーバーである（MisskeyHubに載っていなくても表示）
+			const sourceAllowed = serverHosts.has(fed.sourceHost) || viewpointHosts.has(fed.sourceHost);
+			const targetAllowed = serverHosts.has(fed.targetHost) || viewpointHosts.has(fed.targetHost);
+			if (!sourceAllowed || !targetAllowed) {
 				continue;
 			}
 			const [source, target] =
