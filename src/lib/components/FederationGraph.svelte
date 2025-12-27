@@ -13,11 +13,15 @@
 	let {
 		servers,
 		federations,
-		seedServer = ''
+		seedServer = '',
+		viewpointServers = [],
+		onSelectServer
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
 		seedServer?: string;
+		viewpointServers?: string[];
+		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
 	} = $props();
 
 	let container: HTMLDivElement;
@@ -218,17 +222,19 @@
 
 				label = server.name ?? server.host;
 				repositoryUrl = server.repositoryUrl;
-				iconUrl = server.iconUrl || `https://${host}/favicon.ico`;
+				// MisskeyHubのアイコンURLを使用（CORSの問題があるためクライアント取得は断念）
+				iconUrl = server.iconUrl || '';
 				hasIcon = !!server.iconUrl;
 			} else {
 				// 未知のサーバー（種サーバーからの連合先）
 				size = 15;
 				label = host;
 				repositoryUrl = null;
-				iconUrl = `https://${host}/favicon.ico`;
+				iconUrl = '';
 				hasIcon = false;
 			}
 
+			const isViewpoint = viewpointServers.includes(host);
 			nodes.push({
 				data: {
 					id: host,
@@ -238,7 +244,8 @@
 					color: getRepositoryColor(repositoryUrl),
 					iconUrl,
 					hasIcon,
-					isSeed
+					isSeed,
+					isViewpoint
 				}
 			});
 		}
@@ -276,7 +283,7 @@
 					}
 				},
 				{
-					selector: 'node[iconUrl]',
+					selector: 'node[iconUrl != ""]',
 					style: {
 						'background-image': 'data(iconUrl)',
 						'background-fit': 'cover',
@@ -303,6 +310,14 @@
 						'border-width': 4,
 						'border-color': '#fff',
 						'border-style': 'double'
+					}
+				},
+				{
+					selector: 'node[?isViewpoint]',
+					style: {
+						'border-width': 3,
+						'border-color': '#86b300',
+						'border-style': 'solid'
 					}
 				},
 				{
@@ -369,12 +384,29 @@
 
 		function unhighlightNode(node: import('cytoscape').NodeSingular) {
 			const isSeed = node.data('isSeed');
+			const isViewpoint = node.data('isViewpoint');
 			const nodeColor = node.data('color');
 			const borderWidth = node.data('borderWidth');
-			node.style({
-				'border-width': isSeed ? borderWidth + 2 : borderWidth,
-				'border-color': isSeed ? '#fff' : nodeColor
-			});
+
+			if (isSeed) {
+				node.style({
+					'border-width': 4,
+					'border-color': '#fff',
+					'border-style': 'double'
+				});
+			} else if (isViewpoint) {
+				node.style({
+					'border-width': 3,
+					'border-color': '#86b300',
+					'border-style': 'solid'
+				});
+			} else {
+				node.style({
+					'border-width': borderWidth,
+					'border-color': nodeColor,
+					'border-style': 'solid'
+				});
+			}
 			// 元の色とopacityに戻す
 			node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
 				edge.style({
@@ -384,62 +416,92 @@
 			});
 		}
 
-		// タッチデバイス判定
-		const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+		// サーバー情報のマップを作成（タップ時に使用）
+		const serverInfoMap = new Map(servers.map((s) => [s.host, s]));
 
-		// 現在ハイライト中のノード
-		let highlightedNode: import('cytoscape').NodeSingular | null = null;
+		// 現在選択中のノード
+		let selectedNode: import('cytoscape').NodeSingular | null = null;
 
-		if (isTouchDevice) {
-			// タッチデバイス: タップでハイライト表示/解除、ダブルタップでリンクを開く
-			cy.on('tap', 'node', (evt) => {
-				const node = evt.target;
+		// タップでサーバー情報表示、選択中に再タップでサーバー遷移
+		cy.on('tap', 'node', (evt) => {
+			const node = evt.target;
+			const host = node.id();
 
-				if (highlightedNode && highlightedNode.id() === node.id()) {
-					// 同じノードを再タップ → リンクを開く
-					const host = node.id();
-					window.open(`https://${host}`, '_blank');
-					unhighlightNode(node);
-					highlightedNode = null;
-				} else {
-					// 別のノードをタップ → 前のハイライトを解除して新しいノードをハイライト
-					if (highlightedNode) {
-						unhighlightNode(highlightedNode);
-					}
-					highlightNode(node);
-					highlightedNode = node;
-				}
-			});
+			// ノードの画面上の位置を取得
+			const renderedPos = node.renderedPosition();
+			const containerRect = container.getBoundingClientRect();
+			const position = {
+				x: containerRect.left + renderedPos.x,
+				y: containerRect.top + renderedPos.y
+			};
 
-			// 背景タップでハイライト解除
-			cy.on('tap', (evt) => {
-				if (evt.target === cy && highlightedNode) {
-					unhighlightNode(highlightedNode);
-					highlightedNode = null;
-				}
-			});
-		} else {
-			// デスクトップ: マウスホバーでハイライト
-			cy.on('mouseover', 'node', (evt) => {
-				highlightNode(evt.target);
-			});
-
-			cy.on('mouseout', 'node', (evt) => {
-				unhighlightNode(evt.target);
-			});
-
-			// ノードクリックでサーバーに遷移
-			cy.on('tap', 'node', (evt) => {
-				const host = evt.target.id();
+			if (selectedNode && selectedNode.id() === host) {
+				// 同じノードを再タップ → サーバーに遷移
 				window.open(`https://${host}`, '_blank');
-			});
-		}
+				unhighlightNode(node);
+				selectedNode = null;
+				onSelectServer?.(null, null);
+			} else {
+				// 新しいノードをタップ → サーバー情報を表示
+				if (selectedNode) {
+					unhighlightNode(selectedNode);
+				}
 
-		// ノードドラッグ可能に
+				highlightNode(node);
+				selectedNode = node;
+
+				// サーバー情報を親に通知（位置情報付き）
+				const serverInfo = serverInfoMap.get(host);
+				if (serverInfo) {
+					onSelectServer?.(serverInfo, position);
+				} else {
+					// 未知のサーバー（MisskeyHubにないサーバー）の場合は最小限の情報を作成
+					onSelectServer?.({
+						host,
+						name: host,
+						description: null,
+						repositoryUrl: null,
+						usersCount: null,
+						notesCount: null,
+						iconUrl: null,
+						softwareName: null,
+						softwareVersion: null,
+						registrationOpen: true,
+						emailRequired: false,
+						approvalRequired: false,
+						inviteOnly: false,
+						ageRestriction: 'unknown'
+					}, position);
+				}
+			}
+		});
+
+		// 背景タップで選択解除
+		cy.on('tap', (evt) => {
+			if (evt.target === cy && selectedNode) {
+				unhighlightNode(selectedNode);
+				selectedNode = null;
+				onSelectServer?.(null, null);
+			}
+		});
+
+		// デスクトップ: マウスホバーでもハイライト表示
+		cy.on('mouseover', 'node', (evt) => {
+			if (!selectedNode || selectedNode.id() !== evt.target.id()) {
+				highlightNode(evt.target);
+			}
+		});
+
+		cy.on('mouseout', 'node', (evt) => {
+			if (!selectedNode || selectedNode.id() !== evt.target.id()) {
+				unhighlightNode(evt.target);
+			}
+		});
+
+		// ドラッグは無効化（連合関係の距離感を維持）
 		cy.nodes().ungrabify();
-		cy.on('layoutstop', () => {
-			cy?.nodes().grabify();
 
+		cy.on('layoutstop', () => {
 			// 視点サーバーを中心に配置
 			if (seedServer && cy) {
 				const seedNode = cy.getElementById(seedServer);

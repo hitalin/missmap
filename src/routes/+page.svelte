@@ -4,6 +4,7 @@
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
 	import FederationGraph from '$lib/components/FederationGraph.svelte';
+	import ServerInfoPopup from '$lib/components/ServerInfoPopup.svelte';
 	import {
 		DEFAULT_FILTER,
 		DEFAULT_SETTINGS,
@@ -177,6 +178,20 @@
 		}
 	}
 
+	// グラフでサーバーを選択した時のポップアップ表示用
+	let selectedServerInfo = $state<ServerInfo | null>(null);
+	let popupPosition = $state<{ x: number; y: number } | null>(null);
+
+	function handleSelectServer(server: ServerInfo | null, position: { x: number; y: number } | null) {
+		selectedServerInfo = server;
+		popupPosition = position;
+	}
+
+	function handleClosePopup() {
+		selectedServerInfo = null;
+		popupPosition = null;
+	}
+
 	// 表示するサーバー一覧（SSRで取得したデータを使用）
 	let displayServers = $derived(() => {
 		return data.servers as ServerInfo[];
@@ -315,6 +330,8 @@
 						servers={filteredServers()}
 						federations={displayFederations()}
 						seedServer={settings.seedServer}
+						viewpointServers={settings.viewpointServers}
+						onSelectServer={handleSelectServer}
 					/>
 				</div>
 			{:else}
@@ -334,6 +351,9 @@
 		</main>
 	</div>
 </div>
+
+<!-- Server Info Popup -->
+<ServerInfoPopup server={selectedServerInfo} position={popupPosition} onClose={handleClosePopup} />
 
 <style>
 	.page {
