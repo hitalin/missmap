@@ -22,10 +22,26 @@
 
 	let container: HTMLDivElement;
 	let cy: import('cytoscape').Core | null = null;
+	let isDestroying = false;
 
 	let prevServersLength = 0;
 	let prevFederationsLength = 0;
 	let prevSeedServer = '';
+
+	function destroyCy() {
+		if (cy && !isDestroying) {
+			isDestroying = true;
+			try {
+				// レイアウトを停止してから破棄
+				cy.stop();
+				cy.destroy();
+			} catch {
+				// 破棄中のエラーは無視
+			}
+			cy = null;
+			isDestroying = false;
+		}
+	}
 
 	onMount(() => {
 		prevServersLength = servers.length;
@@ -34,10 +50,7 @@
 		initGraph();
 
 		return () => {
-			if (cy) {
-				cy.destroy();
-				cy = null;
-			}
+			destroyCy();
 		};
 	});
 
@@ -52,10 +65,7 @@
 			prevFederationsLength = federations.length;
 			prevSeedServer = seedServer;
 
-			if (cy) {
-				cy.destroy();
-				cy = null;
-			}
+			destroyCy();
 			initGraph();
 		}
 	});
@@ -346,21 +356,170 @@
 
 <div class="graph-wrapper">
 	<div class="graph" bind:this={container}></div>
+
+	<!-- Graph controls overlay -->
+	<div class="graph-controls">
+		<button class="control-btn" onclick={() => cy?.fit()} title="全体表示">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+			</svg>
+		</button>
+		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 1.3)} title="拡大">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="8" />
+				<line x1="21" y1="21" x2="16.65" y2="16.65" />
+				<line x1="11" y1="8" x2="11" y2="14" />
+				<line x1="8" y1="11" x2="14" y2="11" />
+			</svg>
+		</button>
+		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 0.7)} title="縮小">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="8" />
+				<line x1="21" y1="21" x2="16.65" y2="16.65" />
+				<line x1="8" y1="11" x2="14" y2="11" />
+			</svg>
+		</button>
+		<button class="control-btn" onclick={() => { if (seedServer && cy) { const node = cy.getElementById(seedServer); if (node.length) cy.center(node); } }} title="中心に戻る">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="10" />
+				<circle cx="12" cy="12" r="3" />
+			</svg>
+		</button>
+	</div>
+
+	<!-- Legend -->
+	<div class="graph-legend">
+		<div class="legend-item">
+			<span class="legend-dot seed"></span>
+			<span>視点サーバー</span>
+		</div>
+		<div class="legend-item">
+			<span class="legend-line"></span>
+			<span>連合関係（太さ＝強度）</span>
+		</div>
+	</div>
 </div>
 
 <style>
 	.graph-wrapper {
 		position: relative;
 		flex: 1;
-		min-height: 600px;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 12px;
-		overflow: hidden;
+		min-height: 0;
+		height: 100%;
+		background: radial-gradient(ellipse at center, rgba(134, 179, 0, 0.03) 0%, transparent 70%);
 	}
 
 	.graph {
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Controls */
+	.graph-controls {
+		position: absolute;
+		top: 1rem;
+		right: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		z-index: 10;
+	}
+
+	.control-btn {
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--bg-card);
+		backdrop-filter: blur(12px);
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-md);
+		color: var(--fg-secondary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.control-btn:hover {
+		background: var(--bg-card-hover);
+		border-color: var(--border-color-hover);
+		color: var(--fg-primary);
+		transform: scale(1.05);
+	}
+
+	.control-btn:active {
+		transform: scale(0.95);
+	}
+
+	.control-btn svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	/* Legend */
+	.graph-legend {
+		position: absolute;
+		bottom: 1rem;
+		left: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		background: var(--bg-card);
+		backdrop-filter: blur(12px);
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-md);
+		font-size: 0.75rem;
+		color: var(--fg-muted);
+		z-index: 10;
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.legend-dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--accent-500);
+	}
+
+	.legend-dot.seed {
+		border: 2px solid white;
+		box-shadow: 0 0 8px rgba(134, 179, 0, 0.5);
+	}
+
+	.legend-line {
+		width: 24px;
+		height: 3px;
+		background: linear-gradient(90deg, var(--accent-600), var(--accent-400));
+		border-radius: 2px;
+	}
+
+	@media (max-width: 768px) {
+		.graph-controls {
+			top: 0.75rem;
+			right: 0.75rem;
+		}
+
+		.control-btn {
+			width: 32px;
+			height: 32px;
+		}
+
+		.control-btn svg {
+			width: 16px;
+			height: 16px;
+		}
+
+		.graph-legend {
+			bottom: 0.75rem;
+			left: 0.75rem;
+			padding: 0.5rem 0.75rem;
+			font-size: 0.7rem;
+		}
 	}
 </style>

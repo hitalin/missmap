@@ -1,0 +1,167 @@
+/* Misskey Hub inspired global styles */
+:root {
+	/* Accent colors (Misskey green) */
+	--accent-50: #fcffe5;
+	--accent-100: #f6ffc7;
+	--accent-200: #ecff95;
+	--accent-300: #dcfe58;
+	--accent-400: #c9f526;
+	--accent-500: #aadc06;
+	--accent-600: #86b300;
+	--accent-700: #638506;
+	--accent-800: #4f690b;
+	--accent-900: #42580f;
+	--accent-950: #223201;
+
+	/* Theme colors */
+	--bg-primary: #1a1a1a;
+	--bg-secondary: #242424;
+	--bg-tertiary: #2a2a2a;
+	--bg-card: rgba(255, 255, 255, 0.05);
+	--bg-card-hover: rgba(255, 255, 255, 0.08);
+
+	--fg-primary: #eee;
+	--fg-secondary: rgba(255, 255, 255, 0.7);
+	--fg-muted: rgba(255, 255, 255, 0.5);
+
+	--border-color: rgba(255, 255, 255, 0.1);
+	--border-color-hover: rgba(255, 255, 255, 0.2);
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+	--shadow-glow: 0 0 20px rgba(134, 179, 0, 0.3);
+
+	/* Transitions */
+	--transition-fast: 0.15s ease;
+	--transition-normal: 0.25s ease;
+	--transition-slow: 0.4s ease;
+
+	/* Border radius */
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 16px;
+	--radius-xl: 24px;
+
+	/* Font */
+	--font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	background: var(--bg-primary);
+	color: var(--fg-primary);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+	color: #fff;
+	background-color: var(--accent-600);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.3);
+}
+
+/* Focus styles */
+:focus-visible {
+	outline: 2px solid var(--accent-500);
+	outline-offset: 2px;
+}
+
+/* Button base */
+button {
+	font-family: inherit;
+	cursor: pointer;
+}
+
+/* Link styles */
+a {
+	color: var(--accent-400);
+	text-decoration: none;
+	transition: color var(--transition-fast);
+}
+
+a:hover {
+	color: var(--accent-300);
+}
+
+/* Glass morphism utilities */
+.glass {
+	background: rgba(255, 255, 255, 0.05);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid var(--border-color);
+}
+
+.glass-strong {
+	background: rgba(255, 255, 255, 0.08);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border: 1px solid var(--border-color);
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes pulse-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 20px rgba(134, 179, 0, 0.3);
+	}
+	50% {
+		box-shadow: 0 0 30px rgba(134, 179, 0, 0.5);
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Utility classes */
+.animate-fade-in {
+	animation: fadeIn 0.4s ease-out;
+}
+
+.animate-pulse-glow {
+	animation: pulse-glow 2s ease-in-out infinite;
+}
