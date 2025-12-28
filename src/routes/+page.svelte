@@ -13,10 +13,119 @@
 		DEFAULT_SETTINGS,
 		type ServerFilter,
 		type ServerScale,
-		type UserSettings
+		type UserSettings,
+		type RegistrationStatus,
+		type EmailRequirement,
+		type AgeRestriction
 	} from '$lib/types';
 	import { getServerScale, type ServerInfo } from '$lib/collector';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+
+	// URLクエリパラメータからフィルター状態を読み込む
+	function parseFilterFromQuery(params: URLSearchParams): Partial<ServerFilter> {
+		const filter: Partial<ServerFilter> = {};
+
+		// 登録状態
+		const regStatus = params.get('reg');
+		if (regStatus) {
+			const statuses = regStatus.split(',').filter(s =>
+				['open', 'approval', 'invite', 'closed'].includes(s)
+			) as RegistrationStatus[];
+			if (statuses.length > 0) filter.registrationStatus = statuses;
+		}
+
+		// メールアドレス要件
+		const email = params.get('email');
+		if (email === 'required' || email === 'notRequired') {
+			filter.emailRequirement = email;
+		}
+
+		// 年齢制限
+		const age = params.get('age');
+		if (age === '13+' || age === '18+') {
+			filter.ageRestriction = age;
+		}
+
+		// 規模
+		const scale = params.get('scale');
+		if (scale) {
+			const scales = scale.split(',').filter(s =>
+				['large', 'medium', 'small'].includes(s)
+			) as ServerScale[];
+			if (scales.length > 0) filter.scale = scales;
+		}
+
+		// リポジトリURL
+		const repo = params.get('repo');
+		if (repo) {
+			filter.repositoryUrls = repo.split(',').map(r => decodeURIComponent(r));
+		}
+
+		return filter;
+	}
+
+	// URLクエリパラメータから視点サーバーを読み込む
+	function parseViewpointsFromQuery(params: URLSearchParams): string[] | null {
+		const vp = params.get('vp');
+		if (vp) {
+			return vp.split(',').map(s => s.trim()).filter(s => s.length > 0);
+		}
+		return null;
+	}
+
+	// フィルター状態をURLクエリパラメータに変換
+	function filterToQuery(filter: ServerFilter, viewpointServers: string[], defaultViewpoints: string[]): URLSearchParams {
+		const params = new URLSearchParams();
+
+		// 登録状態
+		if (filter.registrationStatus.length > 0) {
+			params.set('reg', filter.registrationStatus.join(','));
+		}
+
+		// メールアドレス要件
+		if (filter.emailRequirement) {
+			params.set('email', filter.emailRequirement);
+		}
+
+		// 年齢制限
+		if (filter.ageRestriction) {
+			params.set('age', filter.ageRestriction);
+		}
+
+		// 規模
+		if (filter.scale.length > 0) {
+			params.set('scale', filter.scale.join(','));
+		}
+
+		// リポジトリURL
+		if (filter.repositoryUrls.length > 0) {
+			params.set('repo', filter.repositoryUrls.map(r => encodeURIComponent(r)).join(','));
+		}
+
+		// 視点サーバー（デフォルトと異なる場合のみ）
+		const vpSorted = [...viewpointServers].sort();
+		const defaultSorted = [...defaultViewpoints].sort();
+		const isDefault = vpSorted.length === defaultSorted.length &&
+			vpSorted.every((v, i) => v === defaultSorted[i]);
+		if (!isDefault && viewpointServers.length > 0) {
+			params.set('vp', viewpointServers.join(','));
+		}
+
+		return params;
+	}
+
+	// URLを更新（履歴にプッシュせずに置換）
+	function updateUrl(filter: ServerFilter, viewpointServers: string[], defaultViewpoints: string[]) {
+		if (!browser) return;
+		const params = filterToQuery(filter, viewpointServers, defaultViewpoints);
+		const queryString = params.toString();
+		const newUrl = queryString ? `?${queryString}` : window.location.pathname;
+		// 現在のURLと同じなら更新しない
+		if (window.location.search === (queryString ? `?${queryString}` : '')) return;
+		goto(newUrl, { replaceState: true, keepFocus: true, noScroll: true });
+	}
 
 	let { data }: { data: PageData } = $props();
 
@@ -70,23 +179,41 @@
 	$effect(() => {
 		if (browser && !initialized) {
 			initialized = true;
-			const saved = localStorage.getItem('missmap_settings');
-			if (saved) {
-				try {
-					const parsed = JSON.parse(saved);
-					// 古い形式からの移行: viewpointServersがなければ作成
-					if (!parsed.viewpointServers) {
-						parsed.viewpointServers = [parsed.seedServer || 'misskey.io'];
-					}
-					// viewModeは廃止されたので、viewpointServersのみ使用
-					settings = { viewpointServers: parsed.viewpointServers };
-				} catch {
-					// ignore
-				}
-			} else if (defaultViewpoints().length > 0) {
-				// ローカルストレージに設定がない場合、SSRのデフォルト視点サーバーを使用
-				settings.viewpointServers = defaultViewpoints();
+
+			// URLクエリパラメータを優先して読み込み
+			const urlParams = new URLSearchParams(window.location.search);
+			const queryFilter = parseFilterFromQuery(urlParams);
+			const queryViewpoints = parseViewpointsFromQuery(urlParams);
+
+			// URLクエリからフィルターを適用
+			if (Object.keys(queryFilter).length > 0) {
+				filter = { ...DEFAULT_FILTER, ...queryFilter };
 			}
+
+			// URLクエリから視点サーバーを適用（ある場合のみ）
+			if (queryViewpoints && queryViewpoints.length > 0) {
+				settings.viewpointServers = queryViewpoints;
+			} else {
+				// URLクエリがなければローカルストレージを読み込み
+				const saved = localStorage.getItem('missmap_settings');
+				if (saved) {
+					try {
+						const parsed = JSON.parse(saved);
+						// 古い形式からの移行: viewpointServersがなければ作成
+						if (!parsed.viewpointServers) {
+							parsed.viewpointServers = [parsed.seedServer || 'misskey.io'];
+						}
+						// viewModeは廃止されたので、viewpointServersのみ使用
+						settings = { viewpointServers: parsed.viewpointServers };
+					} catch {
+						// ignore
+					}
+				} else if (defaultViewpoints().length > 0) {
+					// ローカルストレージに設定がない場合、SSRのデフォルト視点サーバーを使用
+					settings.viewpointServers = defaultViewpoints();
+				}
+			}
+
 			// 視点サーバーリストにあるがSSRデータにないサーバーから連合情報を取得
 			const ssrHosts = new Set(ssrViewpoints());
 			for (const host of settings.viewpointServers) {
@@ -132,6 +259,16 @@
 		const currentSettings = JSON.stringify(settings);
 		if (browser && initialized) {
 			localStorage.setItem('missmap_settings', currentSettings);
+		}
+	});
+
+	// フィルターと視点サーバーの変更時にURLを更新
+	$effect(() => {
+		// filter と settings.viewpointServers への依存関係を作成
+		const filterStr = JSON.stringify(filter);
+		const vpStr = JSON.stringify(settings.viewpointServers);
+		if (browser && initialized) {
+			updateUrl(filter, settings.viewpointServers, defaultViewpoints());
 		}
 	});
 
