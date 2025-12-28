@@ -25,14 +25,20 @@
 		focusHost = '',
 		viewpointServers = [],
 		privateServers = new Set<string>(),
-		onSelectServer
+		initialSelection = null,
+		onSelectServer,
+		onSelectEdge,
+		onClearSelection
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
 		focusHost?: string;
 		viewpointServers?: string[];
 		privateServers?: Set<string>;
+		initialSelection?: { type: 'node' | 'edge'; value: string } | null;
 		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
+		onSelectEdge?: (sourceHost: string, targetHost: string) => void;
+		onClearSelection?: () => void;
 	} = $props();
 
 	let container: HTMLDivElement;
@@ -928,10 +934,12 @@
 
 		// 背景タップで選択解除
 		cy.on('tap', (evt) => {
-			if (evt.target === cy && selectedNode) {
-				unhighlightNode(selectedNode);
-				selectedNode = null;
-				onSelectServer?.(null, null);
+			if (evt.target === cy) {
+				if (selectedNode) {
+					unhighlightNode(selectedNode);
+					selectedNode = null;
+				}
+				onClearSelection?.();
 			}
 		});
 
@@ -1040,6 +1048,22 @@
 			tooltip.visible = false;
 		});
 
+		// エッジタップで選択
+		cy.on('tap', 'edge', (evt) => {
+			const edge = evt.target;
+			const sourceId = edge.data('source');
+			const targetId = edge.data('target');
+
+			// 前のノード選択を解除
+			if (selectedNode) {
+				unhighlightNode(selectedNode);
+				selectedNode = null;
+			}
+
+			// エッジ選択を通知
+			onSelectEdge?.(sourceId, targetId);
+		});
+
 		// ドラッグは無効化（連合関係の距離感を維持）
 		cy.nodes().ungrabify();
 
@@ -1104,6 +1128,76 @@
 			}
 			// 視点サーバー間の疎通チェックを開始
 			checkViewpointConnectivity();
+
+			// 初期選択があればハイライトして情報を表示
+			if (initialSelection && cy) {
+				if (initialSelection.type === 'node') {
+					// ノード選択
+					const node = cy.getElementById(initialSelection.value);
+					if (node.length > 0) {
+						highlightNode(node);
+						selectedNode = node;
+
+						// ノードの位置を計算してサーバー情報を表示
+						const renderedPos = node.renderedPosition();
+						const containerRect = container.getBoundingClientRect();
+						const position = {
+							x: containerRect.left + renderedPos.x,
+							y: containerRect.top + renderedPos.y
+						};
+
+						const serverInfo = serverInfoMap.get(initialSelection.value);
+						if (serverInfo) {
+							onSelectServer?.(serverInfo, position);
+						} else {
+							// 未知のサーバーの場合は最小限の情報を作成
+							onSelectServer?.({
+								host: initialSelection.value,
+								name: initialSelection.value,
+								description: null,
+								repositoryUrl: null,
+								usersCount: null,
+								notesCount: null,
+								iconUrl: null,
+								softwareName: null,
+								softwareVersion: null,
+								registrationOpen: true,
+								emailRequired: false,
+								approvalRequired: false,
+								inviteOnly: false,
+								ageRestriction: 'unknown'
+							}, position);
+						}
+					}
+				} else if (initialSelection.type === 'edge') {
+					// エッジ選択: "hostA..hostB" 形式
+					const [hostA, hostB] = initialSelection.value.split('..');
+					if (hostA && hostB) {
+						// エッジIDを試す（両方向）
+						let edge = cy.getElementById(`${hostA}-${hostB}`);
+						if (edge.length === 0) {
+							edge = cy.getElementById(`${hostB}-${hostA}`);
+						}
+						// ブロック関係のエッジも試す
+						if (edge.length === 0) {
+							edge = cy.getElementById(`blocked-${hostA}-${hostB}`);
+						}
+						if (edge.length === 0) {
+							edge = cy.getElementById(`blocked-${hostB}-${hostA}`);
+						}
+
+						if (edge.length > 0) {
+							// エッジをハイライト
+							edge.style({
+								'line-color': 'rgba(255, 255, 255, 0.9)',
+								opacity: 1
+							});
+							// エッジ選択を通知
+							onSelectEdge?.(hostA, hostB);
+						}
+					}
+				}
+			}
 		});
 	}
 </script>

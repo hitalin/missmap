@@ -44,10 +44,10 @@
 	function parseFilterFromQuery(params: URLSearchParams): Partial<ServerFilter> {
 		const filter: Partial<ServerFilter> = {};
 
-		// 登録状態（+区切り）
+		// 登録状態（~区切り）
 		const regStatus = params.get('reg');
 		if (regStatus) {
-			const statuses = regStatus.split('+').filter(s =>
+			const statuses = regStatus.split('~').filter(s =>
 				['open', 'approval', 'invite', 'closed'].includes(s)
 			) as RegistrationStatus[];
 			if (statuses.length > 0) filter.registrationStatus = statuses;
@@ -69,7 +69,7 @@
 			filter.ageRestriction = '18+';
 		}
 
-		// 規模（+区切り、L/M/S短縮形も対応）
+		// 規模（~区切り、L/M/S短縮形も対応）
 		const scale = params.get('size');
 		if (scale) {
 			const scaleMap: Record<string, ServerScale> = {
@@ -77,16 +77,16 @@
 				'medium': 'medium', 'M': 'medium',
 				'small': 'small', 'S': 'small'
 			};
-			const scales = scale.split('+')
+			const scales = scale.split('~')
 				.map(s => scaleMap[s])
 				.filter((s): s is ServerScale => s !== undefined);
 			if (scales.length > 0) filter.scale = scales;
 		}
 
-		// リポジトリURL（短縮形対応、+区切り）
+		// リポジトリURL（短縮形対応、~区切り）
 		const repo = params.get('soft');
 		if (repo) {
-			filter.repositoryUrls = repo.split('+').map(r => {
+			filter.repositoryUrls = repo.split('~').map(r => {
 				// 短縮形ならフルURLに変換
 				return REPO_SHORTCUTS[r.toLowerCase()] || decodeURIComponent(r);
 			});
@@ -95,11 +95,11 @@
 		return filter;
 	}
 
-	// URLクエリパラメータから視点サーバーを読み込む（+区切り）
+	// URLクエリパラメータから視点サーバーを読み込む（複数のfromパラメータ）
 	function parseViewpointsFromQuery(params: URLSearchParams): string[] | null {
-		const vp = params.get('from');
-		if (vp) {
-			return vp.split('+').map(s => s.trim()).filter(s => s.length > 0);
+		const viewpoints = params.getAll('from');
+		if (viewpoints.length > 0) {
+			return viewpoints.map(s => s.trim()).filter(s => s.length > 0);
 		}
 		return null;
 	}
@@ -109,13 +109,33 @@
 		return params.get('focus');
 	}
 
+	// URLクエリパラメータから選択状態を読み込む
+	// サーバー: "host.example"
+	// エッジ: "hostA..hostB" (2つのホストを..で区切り)
+	function parseSelectFromQuery(params: URLSearchParams): { type: 'node' | 'edge'; value: string } | null {
+		const select = params.get('select');
+		if (!select) return null;
+
+		// ".."を含む場合はエッジ
+		if (select.includes('..')) {
+			return { type: 'edge', value: select };
+		}
+		return { type: 'node', value: select };
+	}
+
 	// フィルター状態をURLクエリパラメータに変換（人間が読みやすい形式）
-	function filterToQuery(filter: ServerFilter, viewpointServers: string[], defaultViewpoints: string[], focus: string | null): URLSearchParams {
+	function filterToQuery(
+		filter: ServerFilter,
+		viewpointServers: string[],
+		defaultViewpoints: string[],
+		focus: string | null,
+		select: string | null
+	): URLSearchParams {
 		const params = new URLSearchParams();
 
-		// 登録状態（+区切り）
+		// 登録状態（~区切り）
 		if (filter.registrationStatus.length > 0) {
-			params.set('reg', filter.registrationStatus.join('+'));
+			params.set('reg', filter.registrationStatus.join('~'));
 		}
 
 		// メールアドレス要件（yes/no形式）
@@ -125,39 +145,41 @@
 			params.set('email', 'no');
 		}
 
-		// 年齢制限（+なしの数字のみ）
+		// 年齢制限（数字のみ）
 		if (filter.ageRestriction === '13+') {
 			params.set('age', '13');
 		} else if (filter.ageRestriction === '18+') {
 			params.set('age', '18');
 		}
 
-		// 規模（L/M/S短縮形、+区切り）
+		// 規模（L/M/S短縮形、~区切り）
 		if (filter.scale.length > 0) {
 			const shortScale = filter.scale.map(s => {
 				if (s === 'large') return 'L';
 				if (s === 'medium') return 'M';
 				return 'S';
 			});
-			params.set('size', shortScale.join('+'));
+			params.set('size', shortScale.join('~'));
 		}
 
-		// リポジトリURL（短縮形、+区切り）
+		// リポジトリURL（短縮形、~区切り）
 		if (filter.repositoryUrls.length > 0) {
 			const shortRepos = filter.repositoryUrls.map(url => {
 				// 短縮形があればそれを使用
 				return REPO_URL_TO_SHORTCUT[url] || encodeURIComponent(url);
 			});
-			params.set('soft', shortRepos.join('+'));
+			params.set('soft', shortRepos.join('~'));
 		}
 
-		// 視点サーバー（+区切り、デフォルトと異なる場合のみ）
+		// 視点サーバー（複数のfromパラメータ、デフォルトと異なる場合のみ）
 		const vpSorted = [...viewpointServers].sort();
 		const defaultSorted = [...defaultViewpoints].sort();
 		const isDefault = vpSorted.length === defaultSorted.length &&
 			vpSorted.every((v, i) => v === defaultSorted[i]);
 		if (!isDefault && viewpointServers.length > 0) {
-			params.set('from', viewpointServers.join('+'));
+			for (const vp of viewpointServers) {
+				params.append('from', vp);
+			}
 		}
 
 		// フォーカスホスト
@@ -165,13 +187,24 @@
 			params.set('focus', focus);
 		}
 
+		// 選択中サーバー
+		if (select) {
+			params.set('select', select);
+		}
+
 		return params;
 	}
 
 	// URLを更新（履歴にプッシュせずに置換）
-	function updateUrl(filter: ServerFilter, viewpointServers: string[], defaultViewpoints: string[], focus: string | null = null) {
+	function updateUrl(
+		filter: ServerFilter,
+		viewpointServers: string[],
+		defaultViewpoints: string[],
+		focus: string | null = null,
+		select: string | null = null
+	) {
 		if (!browser) return;
-		const params = filterToQuery(filter, viewpointServers, defaultViewpoints, focus);
+		const params = filterToQuery(filter, viewpointServers, defaultViewpoints, focus, select);
 		const queryString = params.toString();
 		const newUrl = queryString ? `?${queryString}` : window.location.pathname;
 		// 現在のURLと同じなら更新しない
@@ -212,6 +245,8 @@
 	let privateServers = $state<Set<string>>(new Set()); // 連合情報を公開していないサーバー
 	let initialized = $state(false);
 	let focusHost = $state(''); // グラフ上でフォーカスするホスト（一時的）
+	// 選択状態（URL連動）: サーバーの場合は "host.example"、エッジの場合は "hostA..hostB"
+	let selectedItem = $state<{ type: 'node' | 'edge'; value: string } | null>(null);
 
 	// SSRで取得済みの視点サーバーリスト
 	let ssrViewpoints = $derived(() => {
@@ -237,6 +272,7 @@
 			const queryFilter = parseFilterFromQuery(urlParams);
 			const queryViewpoints = parseViewpointsFromQuery(urlParams);
 			const queryFocus = parseFocusFromQuery(urlParams);
+			const querySelect = parseSelectFromQuery(urlParams);
 
 			// URLクエリからフィルターを適用
 			if (Object.keys(queryFilter).length > 0) {
@@ -246,6 +282,15 @@
 			// URLクエリからフォーカスホストを適用
 			if (queryFocus) {
 				focusHost = queryFocus;
+			}
+
+			// URLクエリから選択状態を適用
+			if (querySelect) {
+				selectedItem = querySelect;
+				// 選択中のノードがあればフォーカスも設定
+				if (!queryFocus && querySelect.type === 'node') {
+					focusHost = querySelect.value;
+				}
 			}
 
 			// URLクエリから視点サーバーを適用（ある場合のみ）
@@ -320,14 +365,15 @@
 		}
 	});
 
-	// フィルター、視点サーバー、フォーカスホストの変更時にURLを更新
+	// フィルター、視点サーバー、フォーカスホスト、選択状態の変更時にURLを更新
 	$effect(() => {
-		// filter, settings.viewpointServers, focusHost への依存関係を作成
+		// filter, settings.viewpointServers, focusHost, selectedItem への依存関係を作成
 		const filterStr = JSON.stringify(filter);
 		const vpStr = JSON.stringify(settings.viewpointServers);
 		const currentFocus = focusHost;
+		const currentSelect = selectedItem?.value ?? null;
 		if (browser && initialized) {
-			updateUrl(filter, settings.viewpointServers, defaultViewpoints(), currentFocus || null);
+			updateUrl(filter, settings.viewpointServers, defaultViewpoints(), currentFocus || null, currentSelect);
 		}
 	});
 
@@ -397,6 +443,27 @@
 	function handleSelectServer(server: ServerInfo | null, position: { x: number; y: number } | null) {
 		selectedServerInfo = server;
 		popupPosition = position;
+		// URLパラメータに選択状態を反映（ノード選択）
+		selectedItem = server ? { type: 'node', value: server.host } : null;
+	}
+
+	// エッジ選択時のハンドラー
+	function handleSelectEdge(sourceHost: string, targetHost: string) {
+		// エッジ選択時はポップアップは閉じる
+		selectedServerInfo = null;
+		popupPosition = null;
+		// アルファベット順でソートしてURLに保存（一貫性のため）
+		const [hostA, hostB] = sourceHost < targetHost
+			? [sourceHost, targetHost]
+			: [targetHost, sourceHost];
+		selectedItem = { type: 'edge', value: `${hostA}..${hostB}` };
+	}
+
+	// 選択解除のハンドラー
+	function handleClearSelection() {
+		selectedServerInfo = null;
+		popupPosition = null;
+		selectedItem = null;
 	}
 
 	function handleClosePopup() {
@@ -543,7 +610,10 @@
 							focusHost={focusHost}
 							viewpointServers={settings.viewpointServers}
 							{privateServers}
+							initialSelection={selectedItem}
 							onSelectServer={handleSelectServer}
+							onSelectEdge={handleSelectEdge}
+							onClearSelection={handleClearSelection}
 						/>
 					</div>
 				{:else}
@@ -613,7 +683,10 @@
 						focusHost={focusHost}
 						viewpointServers={settings.viewpointServers}
 						{privateServers}
+						initialSelection={selectedItem}
 						onSelectServer={handleSelectServer}
+						onSelectEdge={handleSelectEdge}
+						onClearSelection={handleClearSelection}
 					/>
 				</div>
 			{:else}
