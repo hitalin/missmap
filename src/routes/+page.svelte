@@ -321,12 +321,12 @@
 		{#if !isMobile}
 			<aside class="sidebar">
 				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
-				<FilterPanel bind:filter availableRepositories={availableRepositories()} />
-				<Legend />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
 				/>
+				<FilterPanel bind:filter availableRepositories={availableRepositories()} />
+				<Legend />
 				<StatsPanel
 					totalServers={displayServers().length}
 					filteredServers={filteredServers().length}

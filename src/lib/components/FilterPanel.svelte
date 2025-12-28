@@ -189,9 +189,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
-		margin-bottom: 0.5rem;
-		padding-bottom: 0.375rem;
-		border-bottom: 1px solid var(--border-color);
+		margin-bottom: 0.375rem;
 	}
 
 	.panel-header-toggle {
@@ -200,11 +198,9 @@
 		gap: 0.25rem;
 		width: 100%;
 		padding: 0;
-		padding-bottom: 0.375rem;
-		margin-bottom: 0;
+		margin-bottom: 0.375rem;
 		background: transparent;
 		border: none;
-		border-bottom: 1px solid var(--border-color);
 		cursor: pointer;
 		text-align: left;
 	}
