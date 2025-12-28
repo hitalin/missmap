@@ -1430,14 +1430,22 @@
 		align-items: center;
 		gap: 0.125rem;
 		padding: 0.375rem 0.625rem;
-		background: rgba(0, 0, 0, 0.85);
+		background: rgba(255, 255, 255, 0.95);
 		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.15);
+		border: 1px solid var(--border-color);
 		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-md);
 		pointer-events: none;
 		z-index: 100;
 		white-space: nowrap;
 		animation: tooltip-fade-in 0.15s ease-out;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.graph-tooltip {
+			background: rgba(0, 0, 0, 0.85);
+			border-color: rgba(255, 255, 255, 0.15);
+		}
 	}
 
 	/* エッジツールチップのスタイル */
@@ -1550,7 +1558,7 @@
 		gap: 0.25rem;
 		margin-top: 0.25rem;
 		padding-top: 0.25rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		border-top: 1px solid var(--border-color);
 	}
 
 	.connectivity-direction {
