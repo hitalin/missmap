@@ -312,8 +312,26 @@
 	{#if isMobile}
 		<div class="mobile-panels">
 			<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
+			<SearchPanel
+				servers={filteredServers()}
+				onFocusServer={handleFocusViewpoint}
+			/>
 			<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
 			<Legend />
+			<div class="mobile-stats-row">
+				<StatsPanel
+					totalServers={displayServers().length}
+					filteredServers={filteredServers().length}
+					federationCount={displayFederations().length}
+					viewpointCount={settings.viewpointServers.length}
+					hasActiveFilter={hasActiveFilter()}
+				/>
+				<ActiveFederationsPanel
+					federations={displayFederations()}
+					viewpointServers={settings.viewpointServers}
+					onFocusServer={handleFocusViewpoint}
+				/>
+			</div>
 		</div>
 	{/if}
 
@@ -589,7 +607,8 @@
 
 	.mobile-panels :global(.settings-panel),
 	.mobile-panels :global(.filter-panel),
-	.mobile-panels :global(.legend-panel) {
+	.mobile-panels :global(.legend-panel),
+	.mobile-panels :global(.search-panel) {
 		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: 0;
@@ -599,8 +618,31 @@
 	}
 
 	.mobile-panels :global(.settings-panel),
-	.mobile-panels :global(.filter-panel) {
+	.mobile-panels :global(.filter-panel),
+	.mobile-panels :global(.search-panel) {
 		border-bottom: none;
+	}
+
+	.mobile-stats-row {
+		display: flex;
+		gap: 0;
+		margin: 0 -1rem;
+		background: var(--bg-card);
+		border: 1px solid var(--border-color);
+		border-left: none;
+		border-right: none;
+	}
+
+	.mobile-stats-row :global(.stats-panel),
+	.mobile-stats-row :global(.active-federations-panel) {
+		flex: 1;
+		border: none;
+		border-radius: 0;
+		background: transparent;
+	}
+
+	.mobile-stats-row :global(.stats-panel) {
+		border-right: 1px solid var(--border-color);
 	}
 
 	.mobile-panels :global(.legend-panel) {
