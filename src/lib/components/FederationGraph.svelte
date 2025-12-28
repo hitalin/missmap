@@ -43,6 +43,11 @@
 	const FRICTION = 0.95; // 摩擦係数（小さいほど早く止まる）
 	const MIN_VELOCITY = 0.5; // 最小速度（これ以下で停止）
 
+	// パララックス効果用
+	let starsLayer: HTMLDivElement;
+	let starOffset = { x: 0, y: 0 };
+	const PARALLAX_FACTOR = 0.15; // 星の移動量（グラフの15%）
+
 	function destroyCy() {
 		if (cy && !isDestroying) {
 			isDestroying = true;
@@ -67,6 +72,14 @@
 		panVelocity = { x: 0, y: 0 };
 	}
 
+	// パララックス効果を適用
+	function updateParallax(deltaX: number, deltaY: number) {
+		if (!starsLayer) return;
+		starOffset.x += deltaX * PARALLAX_FACTOR;
+		starOffset.y += deltaY * PARALLAX_FACTOR;
+		starsLayer.style.transform = `translate(${starOffset.x}px, ${starOffset.y}px)`;
+	}
+
 	// 慣性アニメーション
 	function applyInertia() {
 		if (!cy) return;
@@ -83,6 +96,9 @@
 
 		// パン適用
 		cy.panBy({ x: panVelocity.x, y: panVelocity.y });
+
+		// パララックス効果
+		updateParallax(panVelocity.x, panVelocity.y);
 
 		// 次のフレーム
 		inertiaAnimationId = requestAnimationFrame(applyInertia);
@@ -635,15 +651,17 @@
 		// ドラッグは無効化（連合関係の距離感を維持）
 		cy.nodes().ungrabify();
 
-		// 宇宙空間の慣性パン
+		// 宇宙空間の慣性パン + パララックス効果
 		cy.on('viewport', () => {
 			if (isPanning && cy) {
 				const pan = cy.pan();
-				panVelocity = {
-					x: pan.x - lastPanPosition.x,
-					y: pan.y - lastPanPosition.y
-				};
+				const deltaX = pan.x - lastPanPosition.x;
+				const deltaY = pan.y - lastPanPosition.y;
+				panVelocity = { x: deltaX, y: deltaY };
 				lastPanPosition = { x: pan.x, y: pan.y };
+
+				// ドラッグ中もパララックス効果
+				updateParallax(deltaX, deltaY);
 			}
 		});
 
@@ -697,8 +715,8 @@
 </script>
 
 <div class="graph-wrapper">
-	<!-- 宇宙空間の星 -->
-	<div class="stars-layer" aria-hidden="true">
+	<!-- 宇宙空間の星（パララックス効果付き） -->
+	<div class="stars-layer" bind:this={starsLayer} aria-hidden="true">
 		{#each { length: 50 } as _, i}
 			<div
 				class="star"
