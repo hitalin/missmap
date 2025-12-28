@@ -5,7 +5,6 @@
 	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
 	import FederationGraph from '$lib/components/FederationGraph.svelte';
 	import ServerInfoPopup from '$lib/components/ServerInfoPopup.svelte';
-	import StatsPanel from '$lib/components/StatsPanel.svelte';
 	import SearchPanel from '$lib/components/SearchPanel.svelte';
 	import ActiveFederationsPanel from '$lib/components/ActiveFederationsPanel.svelte';
 	import FederatedSoftwarePanel from '$lib/components/FederatedSoftwarePanel.svelte';
@@ -226,16 +225,6 @@
 		return 'open';
 	}
 
-	// フィルターがアクティブかどうか
-	let hasActiveFilter = $derived(() => {
-		return (
-			filter.registrationStatus.length > 0 ||
-			filter.emailRequirement !== null ||
-			filter.ageRestriction !== null ||
-			filter.repositoryUrls.length > 0 ||
-			filter.scale.length > 0
-		);
-	});
 
 	// フィルター適用後のサーバー一覧
 	let filteredServers = $derived(() => {
@@ -308,13 +297,6 @@
 			/>
 			<FilterPanel bind:filter {isMobile} defaultOpen={false} />
 			<div class="mobile-stats-row">
-				<StatsPanel
-					totalServers={displayServers().length}
-					filteredServers={filteredServers().length}
-					federationCount={displayFederations().length}
-					viewpointCount={settings.viewpointServers.length}
-					hasActiveFilter={hasActiveFilter()}
-				/>
 				<ActiveFederationsPanel
 					federations={displayFederations()}
 					viewpointServers={settings.viewpointServers}
@@ -340,13 +322,6 @@
 					onFocusServer={handleFocusViewpoint}
 				/>
 				<FilterPanel bind:filter />
-				<StatsPanel
-					totalServers={displayServers().length}
-					filteredServers={filteredServers().length}
-					federationCount={displayFederations().length}
-					viewpointCount={settings.viewpointServers.length}
-					hasActiveFilter={hasActiveFilter()}
-				/>
 				<ActiveFederationsPanel
 					federations={displayFederations()}
 					viewpointServers={settings.viewpointServers}
@@ -438,7 +413,6 @@
 	.sidebar :global(.filter-panel),
 	.sidebar :global(.settings-panel),
 	.sidebar :global(.search-panel),
-	.sidebar :global(.stats-panel),
 	.sidebar :global(.active-federations-panel),
 	.sidebar :global(.federated-software-panel) {
 		background: var(--bg-card);
@@ -453,7 +427,6 @@
 	.sidebar :global(.filter-panel:hover),
 	.sidebar :global(.settings-panel:hover),
 	.sidebar :global(.search-panel:hover),
-	.sidebar :global(.stats-panel:hover),
 	.sidebar :global(.active-federations-panel:hover),
 	.sidebar :global(.federated-software-panel:hover) {
 		border-color: var(--border-color-hover);
@@ -632,7 +605,6 @@
 		border-right: none;
 	}
 
-	.mobile-stats-row :global(.stats-panel),
 	.mobile-stats-row :global(.active-federations-panel),
 	.mobile-stats-row :global(.federated-software-panel) {
 		flex: 1;
@@ -641,7 +613,6 @@
 		background: transparent;
 	}
 
-	.mobile-stats-row :global(.stats-panel),
 	.mobile-stats-row :global(.active-federations-panel) {
 		border-right: 1px solid var(--border-color);
 	}
