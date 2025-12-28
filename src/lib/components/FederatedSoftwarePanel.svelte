@@ -13,13 +13,19 @@
 		servers = [],
 		federations = [],
 		viewpointServers = [],
-		selectedRepositoryUrls = $bindable([])
+		selectedRepositoryUrls = $bindable([]),
+		isMobile = false,
+		defaultOpen = true
 	}: {
 		servers: ServerInfo[];
 		federations: FederationInfo[];
 		viewpointServers: string[];
 		selectedRepositoryUrls: string[];
+		isMobile?: boolean;
+		defaultOpen?: boolean;
 	} = $props();
+
+	let isExpanded = $state(defaultOpen);
 
 	// サーバーホストをキーにしたマップ
 	let serverMap = $derived(() => {
@@ -75,7 +81,7 @@
 
 {#if federatedSoftware().length > 0}
 <div class="federated-software-panel">
-	<div class="panel-header">
+	<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
 		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M12 2L2 7l10 5 10-5-10-5z" />
 			<path d="M2 17l10 5 10-5" />
@@ -85,8 +91,12 @@
 		{#if selectedCount > 0}
 			<span class="selected-badge">{selectedCount}</span>
 		{/if}
-	</div>
+		<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 12 15 18 9" />
+		</svg>
+	</button>
 
+	{#if isExpanded}
 	<div class="software-chips">
 		{#each federatedSoftware() as { repositoryUrl, displayName, color } (repositoryUrl)}
 			<button
@@ -101,6 +111,7 @@
 			</button>
 		{/each}
 	</div>
+	{/if}
 </div>
 {/if}
 
@@ -109,11 +120,37 @@
 		padding: 0.5rem 0.625rem;
 	}
 
-	.panel-header {
+	.panel-header-toggle {
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
+		width: 100%;
+		padding: 0;
 		margin-bottom: 0.375rem;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.panel-header-toggle h4 {
+		flex: 1;
+		margin: 0;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--fg-primary);
+	}
+
+	.toggle-icon {
+		width: 14px;
+		height: 14px;
+		color: var(--fg-muted);
+		transition: transform var(--transition-fast);
+	}
+
+	.toggle-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel-icon {

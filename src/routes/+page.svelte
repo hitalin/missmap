@@ -294,21 +294,25 @@
 			<SearchPanel
 				servers={filteredServers()}
 				onFocusServer={handleFocusViewpoint}
+				{isMobile}
+				defaultOpen={false}
 			/>
 			<FilterPanel bind:filter {isMobile} defaultOpen={false} />
-			<div class="mobile-stats-row">
-				<FederatedSoftwarePanel
-					servers={displayServers()}
-					federations={displayFederations()}
-					viewpointServers={settings.viewpointServers}
-					bind:selectedRepositoryUrls={filter.repositoryUrls}
-				/>
-				<ActiveFederationsPanel
-					federations={displayFederations()}
-					viewpointServers={settings.viewpointServers}
-					onFocusServer={handleFocusViewpoint}
-				/>
-			</div>
+			<FederatedSoftwarePanel
+				servers={displayServers()}
+				federations={displayFederations()}
+				viewpointServers={settings.viewpointServers}
+				bind:selectedRepositoryUrls={filter.repositoryUrls}
+				{isMobile}
+				defaultOpen={false}
+			/>
+			<ActiveFederationsPanel
+				federations={displayFederations()}
+				viewpointServers={settings.viewpointServers}
+				onFocusServer={handleFocusViewpoint}
+				{isMobile}
+				defaultOpen={false}
+			/>
 		</div>
 	{/if}
 
@@ -595,26 +599,15 @@
 		border-bottom: none;
 	}
 
-	.mobile-stats-row {
-		display: flex;
-		gap: 0;
-		margin: 0 -1rem;
+	.mobile-panels :global(.active-federations-panel),
+	.mobile-panels :global(.federated-software-panel) {
 		background: var(--bg-card);
 		border: 1px solid var(--border-color);
+		border-radius: 0;
+		margin: 0 -1rem;
 		border-left: none;
 		border-right: none;
-	}
-
-	.mobile-stats-row :global(.active-federations-panel),
-	.mobile-stats-row :global(.federated-software-panel) {
-		flex: 1;
-		border: none;
-		border-radius: 0;
-		background: transparent;
-	}
-
-	.mobile-stats-row :global(.federated-software-panel) {
-		border-right: 1px solid var(--border-color);
+		border-bottom: none;
 	}
 
 	@media (max-width: 768px) {

@@ -67,28 +67,18 @@
 </script>
 
 <div class="settings-panel">
-	{#if isMobile}
-		<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
-			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="3" />
-				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-			</svg>
-			<h4>視点</h4>
-			<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<polyline points="6 9 12 15 18 9" />
-			</svg>
-		</button>
-	{:else}
-		<div class="panel-header">
-			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="3" />
-				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-			</svg>
-			<h4>視点</h4>
-		</div>
-	{/if}
+	<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
+		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<circle cx="12" cy="12" r="3" />
+			<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+		</svg>
+		<h4>視点</h4>
+		<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 12 15 18 9" />
+		</svg>
+	</button>
 
-	{#if !isMobile || isExpanded}
+	{#if isExpanded}
 	<div class="viewpoint-chips">
 		{#each settings.viewpointServers as host (host)}
 			<div class="viewpoint-chip">
@@ -168,13 +158,6 @@
 <style>
 	.settings-panel {
 		padding: 0.5rem 0.625rem;
-	}
-
-	.panel-header {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		margin-bottom: 0.375rem;
 	}
 
 	.panel-header-toggle {

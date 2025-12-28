@@ -3,12 +3,17 @@
 
 	let {
 		servers = [],
-		onFocusServer
+		onFocusServer,
+		isMobile = false,
+		defaultOpen = true
 	}: {
 		servers: ServerInfo[];
 		onFocusServer: (host: string) => void;
+		isMobile?: boolean;
+		defaultOpen?: boolean;
 	} = $props();
 
+	let isExpanded = $state(defaultOpen);
 	let searchQuery = $state('');
 	let isOpen = $state(false);
 	let selectedIndex = $state(-1);
@@ -80,14 +85,18 @@
 </script>
 
 <div class="search-panel">
-	<div class="panel-header">
+	<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
 		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<circle cx="11" cy="11" r="8" />
 			<line x1="21" y1="21" x2="16.65" y2="16.65" />
 		</svg>
 		<h4>検索</h4>
-	</div>
+		<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 12 15 18 9" />
+		</svg>
+	</button>
 
+	{#if isExpanded}
 	<div class="search-wrapper">
 		<input
 			bind:this={inputElement}
@@ -131,6 +140,7 @@
 			<span>見つかりませんでした</span>
 		</div>
 	{/if}
+	{/if}
 </div>
 
 <style>
@@ -140,11 +150,37 @@
 		z-index: 10;
 	}
 
-	.panel-header {
+	.panel-header-toggle {
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
+		width: 100%;
+		padding: 0;
 		margin-bottom: 0.375rem;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.panel-header-toggle h4 {
+		flex: 1;
+		margin: 0;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--fg-primary);
+	}
+
+	.toggle-icon {
+		width: 14px;
+		height: 14px;
+		color: var(--fg-muted);
+		transition: transform var(--transition-fast);
+	}
+
+	.toggle-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel-icon {

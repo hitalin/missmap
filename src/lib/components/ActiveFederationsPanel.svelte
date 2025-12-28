@@ -9,12 +9,18 @@
 	let {
 		federations = [],
 		viewpointServers = [],
-		onFocusServer
+		onFocusServer,
+		isMobile = false,
+		defaultOpen = true
 	}: {
 		federations: FederationInfo[];
 		viewpointServers: string[];
 		onFocusServer: (host: string) => void;
+		isMobile?: boolean;
+		defaultOpen?: boolean;
 	} = $props();
+
+	let isExpanded = $state(defaultOpen);
 
 	// 視点サーバーからの連合先を活動量順に取得（上位5件）
 	let activeFederations = $derived(() => {
@@ -58,13 +64,17 @@
 
 {#if activeFederations().length > 0}
 <div class="active-federations-panel">
-	<div class="panel-header">
+	<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
 		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
 		</svg>
 		<h4>活発な連合先</h4>
-	</div>
+		<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 12 15 18 9" />
+		</svg>
+	</button>
 
+	{#if isExpanded}
 	<ul class="federation-list">
 		{#each activeFederations() as { host, activity } (host)}
 			<li>
@@ -75,6 +85,7 @@
 			</li>
 		{/each}
 	</ul>
+	{/if}
 </div>
 {/if}
 
@@ -83,11 +94,37 @@
 		padding: 0.5rem 0.625rem;
 	}
 
-	.panel-header {
+	.panel-header-toggle {
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
+		width: 100%;
+		padding: 0;
 		margin-bottom: 0.375rem;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.panel-header-toggle h4 {
+		flex: 1;
+		margin: 0;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--fg-primary);
+	}
+
+	.toggle-icon {
+		width: 14px;
+		height: 14px;
+		color: var(--fg-muted);
+		transition: transform var(--transition-fast);
+	}
+
+	.toggle-icon.expanded {
+		transform: rotate(180deg);
 	}
 
 	.panel-icon {

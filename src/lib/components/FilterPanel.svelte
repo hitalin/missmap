@@ -56,26 +56,17 @@
 </script>
 
 <aside class="filter-panel">
-	{#if isMobile}
-		<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
-			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-			</svg>
-			<h3>フィルター</h3>
-			<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<polyline points="6 9 12 15 18 9" />
-			</svg>
-		</button>
-	{:else}
-		<div class="panel-header">
-			<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-			</svg>
-			<h3>フィルター</h3>
-		</div>
-	{/if}
+	<button class="panel-header-toggle" onclick={() => isExpanded = !isExpanded}>
+		<svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+		</svg>
+		<h3>フィルター</h3>
+		<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<polyline points="6 9 12 15 18 9" />
+		</svg>
+	</button>
 
-	{#if !isMobile || isExpanded}
+	{#if isExpanded}
 	<section>
 		<h4>新規登録</h4>
 		<div class="chip-group">
@@ -141,13 +132,6 @@
 <style>
 	.filter-panel {
 		padding: 0.5rem 0.625rem;
-	}
-
-	.panel-header {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		margin-bottom: 0.375rem;
 	}
 
 	.panel-header-toggle {
