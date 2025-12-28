@@ -23,54 +23,83 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 
+	// リポジトリURLの短縮形マッピング
+	const REPO_SHORTCUTS: Record<string, string> = {
+		'misskey': 'https://github.com/misskey-dev/misskey',
+		'sharkey': 'https://activitypub.software/TransFem-org/Sharkey',
+		'firefish': 'https://git.joinfirefish.org/firefish/firefish',
+		'cherrypick': 'https://github.com/kokonect-link/cherrypick',
+		'catodon': 'https://codeberg.org/catodon/catodon',
+		'iceshrimp': 'https://iceshrimp.dev/iceshrimp/iceshrimp',
+		'meisskey': 'https://github.com/mei23/misskey',
+		'foundkey': 'https://akkoma.dev/FoundKeyGang/FoundKey'
+	};
+
+	// 逆マッピング（URL → 短縮形）
+	const REPO_URL_TO_SHORTCUT = Object.fromEntries(
+		Object.entries(REPO_SHORTCUTS).map(([k, v]) => [v, k])
+	);
+
 	// URLクエリパラメータからフィルター状態を読み込む
 	function parseFilterFromQuery(params: URLSearchParams): Partial<ServerFilter> {
 		const filter: Partial<ServerFilter> = {};
 
-		// 登録状態
+		// 登録状態（+区切り）
 		const regStatus = params.get('reg');
 		if (regStatus) {
-			const statuses = regStatus.split(',').filter(s =>
+			const statuses = regStatus.split('+').filter(s =>
 				['open', 'approval', 'invite', 'closed'].includes(s)
 			) as RegistrationStatus[];
 			if (statuses.length > 0) filter.registrationStatus = statuses;
 		}
 
-		// メールアドレス要件
+		// メールアドレス要件（yes/no形式）
 		const email = params.get('email');
-		if (email === 'required' || email === 'notRequired') {
-			filter.emailRequirement = email;
+		if (email === 'yes') {
+			filter.emailRequirement = 'required';
+		} else if (email === 'no') {
+			filter.emailRequirement = 'notRequired';
 		}
 
 		// 年齢制限
 		const age = params.get('age');
-		if (age === '13+' || age === '18+') {
-			filter.ageRestriction = age;
+		if (age === '13' || age === '13+') {
+			filter.ageRestriction = '13+';
+		} else if (age === '18' || age === '18+') {
+			filter.ageRestriction = '18+';
 		}
 
-		// 規模
-		const scale = params.get('scale');
+		// 規模（+区切り、L/M/S短縮形も対応）
+		const scale = params.get('size');
 		if (scale) {
-			const scales = scale.split(',').filter(s =>
-				['large', 'medium', 'small'].includes(s)
-			) as ServerScale[];
+			const scaleMap: Record<string, ServerScale> = {
+				'large': 'large', 'L': 'large',
+				'medium': 'medium', 'M': 'medium',
+				'small': 'small', 'S': 'small'
+			};
+			const scales = scale.split('+')
+				.map(s => scaleMap[s])
+				.filter((s): s is ServerScale => s !== undefined);
 			if (scales.length > 0) filter.scale = scales;
 		}
 
-		// リポジトリURL
-		const repo = params.get('repo');
+		// リポジトリURL（短縮形対応、+区切り）
+		const repo = params.get('soft');
 		if (repo) {
-			filter.repositoryUrls = repo.split(',').map(r => decodeURIComponent(r));
+			filter.repositoryUrls = repo.split('+').map(r => {
+				// 短縮形ならフルURLに変換
+				return REPO_SHORTCUTS[r.toLowerCase()] || decodeURIComponent(r);
+			});
 		}
 
 		return filter;
 	}
 
-	// URLクエリパラメータから視点サーバーを読み込む
+	// URLクエリパラメータから視点サーバーを読み込む（+区切り）
 	function parseViewpointsFromQuery(params: URLSearchParams): string[] | null {
-		const vp = params.get('vp');
+		const vp = params.get('from');
 		if (vp) {
-			return vp.split(',').map(s => s.trim()).filter(s => s.length > 0);
+			return vp.split('+').map(s => s.trim()).filter(s => s.length > 0);
 		}
 		return null;
 	}
@@ -80,42 +109,55 @@
 		return params.get('focus');
 	}
 
-	// フィルター状態をURLクエリパラメータに変換
+	// フィルター状態をURLクエリパラメータに変換（人間が読みやすい形式）
 	function filterToQuery(filter: ServerFilter, viewpointServers: string[], defaultViewpoints: string[], focus: string | null): URLSearchParams {
 		const params = new URLSearchParams();
 
-		// 登録状態
+		// 登録状態（+区切り）
 		if (filter.registrationStatus.length > 0) {
-			params.set('reg', filter.registrationStatus.join(','));
+			params.set('reg', filter.registrationStatus.join('+'));
 		}
 
-		// メールアドレス要件
-		if (filter.emailRequirement) {
-			params.set('email', filter.emailRequirement);
+		// メールアドレス要件（yes/no形式）
+		if (filter.emailRequirement === 'required') {
+			params.set('email', 'yes');
+		} else if (filter.emailRequirement === 'notRequired') {
+			params.set('email', 'no');
 		}
 
-		// 年齢制限
-		if (filter.ageRestriction) {
-			params.set('age', filter.ageRestriction);
+		// 年齢制限（+なしの数字のみ）
+		if (filter.ageRestriction === '13+') {
+			params.set('age', '13');
+		} else if (filter.ageRestriction === '18+') {
+			params.set('age', '18');
 		}
 
-		// 規模
+		// 規模（L/M/S短縮形、+区切り）
 		if (filter.scale.length > 0) {
-			params.set('scale', filter.scale.join(','));
+			const shortScale = filter.scale.map(s => {
+				if (s === 'large') return 'L';
+				if (s === 'medium') return 'M';
+				return 'S';
+			});
+			params.set('size', shortScale.join('+'));
 		}
 
-		// リポジトリURL
+		// リポジトリURL（短縮形、+区切り）
 		if (filter.repositoryUrls.length > 0) {
-			params.set('repo', filter.repositoryUrls.map(r => encodeURIComponent(r)).join(','));
+			const shortRepos = filter.repositoryUrls.map(url => {
+				// 短縮形があればそれを使用
+				return REPO_URL_TO_SHORTCUT[url] || encodeURIComponent(url);
+			});
+			params.set('soft', shortRepos.join('+'));
 		}
 
-		// 視点サーバー（デフォルトと異なる場合のみ）
+		// 視点サーバー（+区切り、デフォルトと異なる場合のみ）
 		const vpSorted = [...viewpointServers].sort();
 		const defaultSorted = [...defaultViewpoints].sort();
 		const isDefault = vpSorted.length === defaultSorted.length &&
 			vpSorted.every((v, i) => v === defaultSorted[i]);
 		if (!isDefault && viewpointServers.length > 0) {
-			params.set('vp', viewpointServers.join(','));
+			params.set('from', viewpointServers.join('+'));
 		}
 
 		// フォーカスホスト
