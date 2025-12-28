@@ -8,6 +8,7 @@
 	import Legend from '$lib/components/Legend.svelte';
 	import StatsPanel from '$lib/components/StatsPanel.svelte';
 	import SearchPanel from '$lib/components/SearchPanel.svelte';
+	import ActiveFederationsPanel from '$lib/components/ActiveFederationsPanel.svelte';
 	import {
 		DEFAULT_FILTER,
 		DEFAULT_SETTINGS,
@@ -334,6 +335,11 @@
 					viewpointCount={settings.viewpointServers.length}
 					hasActiveFilter={hasActiveFilter()}
 				/>
+				<ActiveFederationsPanel
+					federations={displayFederations()}
+					viewpointServers={settings.viewpointServers}
+					onFocusServer={handleFocusViewpoint}
+				/>
 			</aside>
 		{/if}
 
@@ -415,7 +421,8 @@
 	.sidebar :global(.settings-panel),
 	.sidebar :global(.legend-panel),
 	.sidebar :global(.search-panel),
-	.sidebar :global(.stats-panel) {
+	.sidebar :global(.stats-panel),
+	.sidebar :global(.active-federations-panel) {
 		background: var(--bg-card);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
@@ -429,7 +436,8 @@
 	.sidebar :global(.settings-panel:hover),
 	.sidebar :global(.legend-panel:hover),
 	.sidebar :global(.search-panel:hover),
-	.sidebar :global(.stats-panel:hover) {
+	.sidebar :global(.stats-panel:hover),
+	.sidebar :global(.active-federations-panel:hover) {
 		border-color: var(--border-color-hover);
 		box-shadow: var(--shadow-md);
 	}
