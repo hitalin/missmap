@@ -73,7 +73,7 @@
 				<circle cx="12" cy="12" r="3" />
 				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
 			</svg>
-			<h4>視点サーバー</h4>
+			<h4>視点</h4>
 			<svg class="toggle-icon" class:expanded={isExpanded} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="6 9 12 15 18 9" />
 			</svg>
@@ -84,12 +84,11 @@
 				<circle cx="12" cy="12" r="3" />
 				<path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
 			</svg>
-			<h4>視点サーバー</h4>
+			<h4>視点</h4>
 		</div>
 	{/if}
 
 	{#if !isMobile || isExpanded}
-	<!-- 視点サーバーリスト -->
 	<div class="viewpoint-chips">
 		{#each settings.viewpointServers as host (host)}
 			<div class="viewpoint-chip">
@@ -150,7 +149,7 @@
 					<line x1="12" y1="8" x2="12" y2="16" />
 					<line x1="8" y1="12" x2="16" y2="12" />
 				</svg>
-				追加
+				サーバーを追加
 			</button>
 			{#if !isDefault()}
 				<button class="reset-btn" onclick={handleResetToDefault} title="デフォルトに戻す">
