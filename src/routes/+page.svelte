@@ -48,6 +48,7 @@
 	let settings: UserSettings = $state({ ...DEFAULT_SETTINGS });
 	let isLoading = $state(false);
 	let additionalFederations = $state<FederationInfo[]>([]); // 追加取得した連合情報
+	let privateServers = $state<Set<string>>(new Set()); // 連合情報を公開していないサーバー
 	let initialized = $state(false);
 	let focusHost = $state(''); // グラフ上でフォーカスするホスト（一時的）
 
@@ -147,7 +148,11 @@
 			});
 
 			if (!res.ok) {
-				const errorData = (await res.json().catch(() => ({}))) as { message?: string };
+				const errorData = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+				// 認証が必要なサーバーをマーク
+				if (errorData.error === 'CREDENTIAL_REQUIRED') {
+					privateServers = new Set([...privateServers, seedHost]);
+				}
 				federationError = errorData.message ?? `${seedHost} から連合情報を取得できませんでした`;
 				return [];
 			}
@@ -341,6 +346,7 @@
 							federations={displayFederations()}
 							focusHost={focusHost}
 							viewpointServers={settings.viewpointServers}
+							{privateServers}
 							onSelectServer={handleSelectServer}
 						/>
 					</div>
@@ -410,6 +416,7 @@
 						federations={displayFederations()}
 						focusHost={focusHost}
 						viewpointServers={settings.viewpointServers}
+						{privateServers}
 						onSelectServer={handleSelectServer}
 					/>
 				</div>

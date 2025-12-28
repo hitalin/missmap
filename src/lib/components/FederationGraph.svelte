@@ -24,12 +24,14 @@
 		federations,
 		focusHost = '',
 		viewpointServers = [],
+		privateServers = new Set<string>(),
 		onSelectServer
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
 		focusHost?: string;
 		viewpointServers?: string[];
+		privateServers?: Set<string>;
 		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
 	} = $props();
 
@@ -460,16 +462,20 @@
 			}
 
 			const isViewpoint = viewpointServers.includes(host);
+			const isPrivate = privateServers.has(host);
+			// 非公開サーバーには鍵マークを追加
+			const displayLabel = isPrivate ? `🔒 ${label}` : label;
 			nodes.push({
 				data: {
 					id: host,
-					label,
+					label: displayLabel,
 					size,
 					repositoryUrl,
 					color: getRepositoryColor(repositoryUrl),
 					iconUrl,
 					hasIcon,
-					isViewpoint
+					isViewpoint,
+					isPrivate
 				}
 			});
 		}
@@ -876,6 +882,7 @@
 		<div class="legend-item"><span class="legend-key">中心</span><span class="legend-val">繋がり多</span></div>
 		<div class="legend-item legend-blocked"><span class="legend-key">赤破線</span><span class="legend-val">ブロック</span></div>
 		<div class="legend-item legend-suspended"><span class="legend-key">橙破線</span><span class="legend-val">配信停止</span></div>
+		<div class="legend-item"><span class="legend-key">🔒</span><span class="legend-val">連合非公開</span></div>
 	</div>
 </div>
 
