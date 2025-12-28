@@ -38,13 +38,24 @@
 	let container: HTMLDivElement;
 	let cy: import('cytoscape').Core | null = null;
 
-	// ツールチップ状態
-	let tooltip = $state<{ visible: boolean; x: number; y: number; label: string; host: string }>({
+	// ツールチップ状態（ノード用とエッジ用）
+	let tooltip = $state<{
+		visible: boolean;
+		x: number;
+		y: number;
+		type: 'node' | 'edge';
+		// ノード用
+		label?: string;
+		host?: string;
+		// エッジ用
+		source?: string;
+		target?: string;
+		relation?: 'federation' | 'blocked' | 'suspended';
+	}>({
 		visible: false,
 		x: 0,
 		y: 0,
-		label: '',
-		host: ''
+		type: 'node'
 	});
 	let isDestroying = false;
 	let isInitialized = false;
@@ -736,6 +747,7 @@
 				visible: true,
 				x: renderedPos.x,
 				y: renderedPos.y - node.renderedHeight() / 2 - 8,
+				type: 'node',
 				label: node.data('label'),
 				host: node.id()
 			};
@@ -745,6 +757,60 @@
 			if (!selectedNode || selectedNode.id() !== evt.target.id()) {
 				unhighlightNode(evt.target);
 			}
+			// ツールチップ非表示
+			tooltip.visible = false;
+		});
+
+		// エッジのマウスホバーでツールチップ表示
+		cy.on('mouseover', 'edge', (evt) => {
+			const edge = evt.target;
+			const sourceId = edge.data('source');
+			const targetId = edge.data('target');
+			const isBlocked = edge.data('isBlocked');
+			const isSuspended = edge.data('isSuspended');
+
+			// 関係の種類を判定
+			let relation: 'federation' | 'blocked' | 'suspended' = 'federation';
+			if (isSuspended) {
+				relation = 'suspended';
+			} else if (isBlocked) {
+				relation = 'blocked';
+			}
+
+			// エッジの中点を計算
+			const sourceNode = cy?.getElementById(sourceId);
+			const targetNode = cy?.getElementById(targetId);
+			if (sourceNode && targetNode) {
+				const sourcePos = sourceNode.renderedPosition();
+				const targetPos = targetNode.renderedPosition();
+				const midX = (sourcePos.x + targetPos.x) / 2;
+				const midY = (sourcePos.y + targetPos.y) / 2;
+
+				tooltip = {
+					visible: true,
+					x: midX,
+					y: midY - 10,
+					type: 'edge',
+					source: sourceId,
+					target: targetId,
+					relation
+				};
+			}
+
+			// エッジをハイライト
+			edge.style({
+				'line-color': 'rgba(255, 255, 255, 0.9)',
+				opacity: 1
+			});
+		});
+
+		cy.on('mouseout', 'edge', (evt) => {
+			const edge = evt.target;
+			// エッジを元に戻す
+			edge.style({
+				'line-color': edge.data('color'),
+				opacity: edge.data('opacity')
+			});
 			// ツールチップ非表示
 			tooltip.visible = false;
 		});
@@ -819,11 +885,34 @@
 	<!-- ツールチップ -->
 	{#if tooltip.visible}
 		<div
-			class="node-tooltip"
+			class="graph-tooltip"
+			class:edge-tooltip={tooltip.type === 'edge'}
+			class:blocked={tooltip.relation === 'blocked'}
+			class:suspended={tooltip.relation === 'suspended'}
 			style="left: {tooltip.x}px; top: {tooltip.y}px;"
 		>
-			<span class="tooltip-label">{tooltip.label}</span>
-			<span class="tooltip-host">{tooltip.host}</span>
+			{#if tooltip.type === 'node'}
+				<span class="tooltip-label">{tooltip.label}</span>
+				<span class="tooltip-host">{tooltip.host}</span>
+			{:else}
+				<div class="edge-relation">
+					{#if tooltip.relation === 'blocked'}
+						<span class="relation-icon">🚫</span>
+						<span class="relation-text">ブロック</span>
+					{:else if tooltip.relation === 'suspended'}
+						<span class="relation-icon">⏸️</span>
+						<span class="relation-text">配信停止</span>
+					{:else}
+						<span class="relation-icon">🔗</span>
+						<span class="relation-text">連合</span>
+					{/if}
+				</div>
+				<div class="edge-hosts">
+					<span class="edge-source">{tooltip.source}</span>
+					<span class="edge-arrow">{tooltip.relation === 'federation' ? '↔' : '→'}</span>
+					<span class="edge-target">{tooltip.target}</span>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -900,8 +989,8 @@
 		overflow: hidden;
 	}
 
-	/* ノードツールチップ */
-	.node-tooltip {
+	/* グラフツールチップ */
+	.graph-tooltip {
 		position: absolute;
 		transform: translate(-50%, -100%);
 		display: flex;
@@ -917,6 +1006,22 @@
 		z-index: 100;
 		white-space: nowrap;
 		animation: tooltip-fade-in 0.15s ease-out;
+	}
+
+	/* エッジツールチップのスタイル */
+	.graph-tooltip.edge-tooltip {
+		gap: 0.25rem;
+		padding: 0.5rem 0.75rem;
+	}
+
+	.graph-tooltip.edge-tooltip.blocked {
+		border-color: rgba(255, 71, 87, 0.5);
+		background: rgba(255, 71, 87, 0.15);
+	}
+
+	.graph-tooltip.edge-tooltip.suspended {
+		border-color: rgba(255, 165, 2, 0.5);
+		background: rgba(255, 165, 2, 0.15);
 	}
 
 	@keyframes tooltip-fade-in {
@@ -939,6 +1044,55 @@
 	.tooltip-host {
 		font-size: 0.65rem;
 		color: var(--fg-muted);
+	}
+
+	/* エッジツールチップの内容 */
+	.edge-relation {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.relation-icon {
+		font-size: 0.9rem;
+	}
+
+	.relation-text {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--fg-primary);
+	}
+
+	.graph-tooltip.blocked .relation-text {
+		color: #ff6b6b;
+	}
+
+	.graph-tooltip.suspended .relation-text {
+		color: #ffbe76;
+	}
+
+	.edge-hosts {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.65rem;
+	}
+
+	.edge-source,
+	.edge-target {
+		color: var(--fg-secondary);
+	}
+
+	.edge-arrow {
+		color: var(--fg-muted);
+	}
+
+	.graph-tooltip.blocked .edge-arrow {
+		color: #ff6b6b;
+	}
+
+	.graph-tooltip.suspended .edge-arrow {
+		color: #ffbe76;
 	}
 
 	/* 星のレイヤー */
