@@ -166,20 +166,14 @@ async function fetchFederations(seedHost: string, knownHosts: Set<string>): Prom
 	}
 }
 
-// ブロック/サスペンド関係を取得（タイムアウト付き）
+// ブロック/サスペンド関係を取得
 async function fetchBlockedRelations(seedHost: string, knownHosts: Set<string>): Promise<FederationInfo[]> {
 	try {
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒タイムアウト
-
 		const res = await fetch(`https://${seedHost}/api/federation/instances`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ limit: 30, blocked: true }),
-			signal: controller.signal
+			body: JSON.stringify({ limit: 30, blocked: true })
 		});
-
-		clearTimeout(timeoutId);
 
 		if (!res.ok) return [];
 
@@ -206,25 +200,6 @@ async function fetchBlockedRelations(seedHost: string, knownHosts: Set<string>):
 	}
 }
 
-// 並列実行数を制限してブロック関係を取得
-async function fetchAllBlockedRelations(
-	hosts: string[],
-	knownHosts: Set<string>,
-	concurrency: number = 10
-): Promise<FederationInfo[]> {
-	const results: FederationInfo[] = [];
-
-	for (let i = 0; i < hosts.length; i += concurrency) {
-		const batch = hosts.slice(i, i + concurrency);
-		const batchResults = await Promise.all(
-			batch.map((host) => fetchBlockedRelations(host, knownHosts))
-		);
-		results.push(...batchResults.flat());
-	}
-
-	return results;
-}
-
 export const load: PageServerLoad = async ({ fetch }) => {
 	try {
 		const res = await fetch(JOINMISSKEY_API);
@@ -243,24 +218,21 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 		const knownHosts = new Set(japaneseServers.map((s) => s.host));
 
-		// 大規模サーバーから連合情報を取得（上位5件）
+		// 大規模サーバーから連合情報を取得（上位5件）= デフォルト視点サーバー
 		const largeServers = japaneseServers
 			.filter((s) => (s.usersCount ?? 0) >= 1000)
 			.sort((a, b) => (b.usersCount ?? 0) - (a.usersCount ?? 0))
 			.slice(0, 5);
 
-		// 全サーバーのホスト名リスト
-		const allHosts = japaneseServers.map((s) => s.host);
-
-		// 正常な連合関係（大規模サーバーから）とブロック関係（全サーバーから）を並列で取得
-		const [federationsArrays, blockedRelations] = await Promise.all([
-			Promise.all(largeServers.map((s) => fetchFederations(s.host, knownHosts))),
-			fetchAllBlockedRelations(allHosts, knownHosts, 15) // 15並列で全サーバーからブロック情報取得
-		]);
-		const federations = [...federationsArrays.flat(), ...blockedRelations];
-
-		// デフォルトの視点サーバーリストを返す
+		// デフォルトの視点サーバーリスト
 		const defaultViewpoints = largeServers.map(s => s.host);
+
+		// 正常な連合関係とブロック関係を視点サーバーから取得
+		const [federationsArrays, blockedArrays] = await Promise.all([
+			Promise.all(largeServers.map((s) => fetchFederations(s.host, knownHosts))),
+			Promise.all(largeServers.map((s) => fetchBlockedRelations(s.host, knownHosts)))
+		]);
+		const federations = [...federationsArrays.flat(), ...blockedArrays.flat()];
 
 		return {
 			servers: japaneseServers,
