@@ -1413,15 +1413,16 @@
 		flex: 1;
 		min-height: 0;
 		height: 100%;
-		/* 宇宙空間の背景 - 中央にほんのり明るい星雲 */
+		/* 宇宙空間の背景 - 常にダークテーマ */
 		background:
 			radial-gradient(ellipse at 30% 40%, rgba(100, 140, 200, 0.04) 0%, transparent 50%),
 			radial-gradient(ellipse at 70% 60%, rgba(160, 100, 180, 0.03) 0%, transparent 50%),
-			radial-gradient(ellipse at center, rgba(134, 179, 0, 0.05) 0%, transparent 60%);
+			radial-gradient(ellipse at center, rgba(134, 179, 0, 0.05) 0%, transparent 60%),
+			#1a1a1a;
 		overflow: hidden;
 	}
 
-	/* グラフツールチップ */
+	/* グラフツールチップ - 常にダークテーマ（宇宙空間用） */
 	.graph-tooltip {
 		position: absolute;
 		transform: translate(-50%, -100%);
@@ -1430,22 +1431,18 @@
 		align-items: center;
 		gap: 0.125rem;
 		padding: 0.375rem 0.625rem;
-		background: rgba(255, 255, 255, 0.95);
+		background: rgba(0, 0, 0, 0.85);
 		backdrop-filter: blur(8px);
-		border: 1px solid var(--border-color);
+		border: 1px solid rgba(255, 255, 255, 0.15);
 		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-md);
 		pointer-events: none;
 		z-index: 100;
 		white-space: nowrap;
 		animation: tooltip-fade-in 0.15s ease-out;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.graph-tooltip {
-			background: rgba(0, 0, 0, 0.85);
-			border-color: rgba(255, 255, 255, 0.15);
-		}
+		/* ダークテーマ固定のテキスト色 */
+		--tooltip-fg-primary: #eee;
+		--tooltip-fg-muted: rgba(255, 255, 255, 0.5);
+		--tooltip-fg-secondary: rgba(255, 255, 255, 0.7);
 	}
 
 	/* エッジツールチップのスタイル */
@@ -1488,12 +1485,12 @@
 	.tooltip-label {
 		font-size: 0.8rem;
 		font-weight: 600;
-		color: var(--fg-primary);
+		color: var(--tooltip-fg-primary);
 	}
 
 	.tooltip-host {
 		font-size: 0.65rem;
-		color: var(--fg-muted);
+		color: var(--tooltip-fg-muted);
 	}
 
 	/* エッジツールチップの内容 */
@@ -1510,7 +1507,7 @@
 	.relation-text {
 		font-size: 0.75rem;
 		font-weight: 600;
-		color: var(--fg-primary);
+		color: var(--tooltip-fg-primary);
 	}
 
 	.graph-tooltip.blocked .relation-text {
@@ -1702,7 +1699,7 @@
 		height: 18px;
 	}
 
-	/* Legend overlay */
+	/* Legend overlay - 常にダークテーマ（宇宙空間用） */
 	.graph-legend {
 		position: absolute;
 		bottom: 1rem;
@@ -1711,19 +1708,14 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		padding: 0.5rem 0.625rem;
-		background: rgba(255, 255, 255, 0.9);
+		background: rgba(0, 0, 0, 0.5);
 		backdrop-filter: blur(8px);
-		border: 1px solid var(--border-color);
+		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
 		z-index: 10;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		.graph-legend {
-			background: rgba(0, 0, 0, 0.5);
-			box-shadow: none;
-		}
+		/* ダークテーマ固定のテキスト色 */
+		--legend-fg-muted: rgba(255, 255, 255, 0.5);
+		--legend-fg-secondary: rgba(255, 255, 255, 0.7);
 	}
 
 	.legend-item {
@@ -1734,12 +1726,12 @@
 	}
 
 	.legend-key {
-		color: var(--fg-muted);
+		color: var(--legend-fg-muted);
 		min-width: 3.5rem;
 	}
 
 	.legend-val {
-		color: var(--fg-secondary);
+		color: var(--legend-fg-secondary);
 	}
 
 	.legend-blocked .legend-key {

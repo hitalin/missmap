@@ -214,7 +214,7 @@
 	.viewpoint-chip {
 		display: inline-flex;
 		align-items: center;
-		background: var(--bg-tertiary);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		overflow: hidden;
@@ -419,7 +419,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0.5rem;
-		background: var(--bg-tertiary);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius-md);
 		color: var(--fg-muted);

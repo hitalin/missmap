@@ -192,7 +192,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		padding: 0.25rem 0.5rem;
-		background: var(--bg-tertiary);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		font-size: 0.65rem;

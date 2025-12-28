@@ -243,7 +243,7 @@
 
 	.filter-chip {
 		padding: 0.25rem 0.5rem;
-		background: var(--bg-tertiary);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		font-size: 0.7rem;
@@ -253,8 +253,8 @@
 	}
 
 	.filter-chip:hover {
-		background: var(--bg-card-hover);
 		border-color: var(--border-color-hover);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.filter-chip.active {
