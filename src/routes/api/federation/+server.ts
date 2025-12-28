@@ -71,16 +71,51 @@ export const POST: RequestHandler = async ({ request }) => {
 			offset += limit;
 		}
 
-		const federations = allInstances
+		// 正常な連合関係
+		const normalFederations = allInstances
 			.filter((inst) => !inst.isBlocked && !inst.isSuspended)
 			.map((inst) => ({
 				sourceHost: seedServer,
 				targetHost: inst.host,
 				usersCount: inst.usersCount ?? 0,
-				notesCount: inst.notesCount ?? 0
+				notesCount: inst.notesCount ?? 0,
+				isBlocked: false,
+				isSuspended: false
 			}));
 
-		return json({ federations });
+		// ブロック関係も取得
+		let blockedFederations: Array<{
+			sourceHost: string;
+			targetHost: string;
+			usersCount: number;
+			notesCount: number;
+			isBlocked: boolean;
+			isSuspended: boolean;
+		}> = [];
+
+		try {
+			const blockedRes = await fetch(`https://${seedServer}/api/federation/instances`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ limit: 30, blocked: true })
+			});
+
+			if (blockedRes.ok) {
+				const blockedInstances = (await blockedRes.json()) as FederationInstance[];
+				blockedFederations = blockedInstances.map((inst) => ({
+					sourceHost: seedServer,
+					targetHost: inst.host,
+					usersCount: inst.usersCount ?? 0,
+					notesCount: inst.notesCount ?? 0,
+					isBlocked: inst.isBlocked ?? true,
+					isSuspended: inst.isSuspended ?? false
+				}));
+			}
+		} catch {
+			// ブロック情報取得に失敗しても続行
+		}
+
+		return json({ federations: [...normalFederations, ...blockedFederations] });
 	} catch (e) {
 		console.error(`Failed to fetch federations from ${seedServer}:`, e);
 		return json(
