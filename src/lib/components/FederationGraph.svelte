@@ -1658,7 +1658,7 @@
 		z-index: 1;
 	}
 
-	/* Controls */
+	/* Controls - 常にダークテーマ（宇宙空間用） */
 	.graph-controls {
 		position: absolute;
 		top: 1rem;
@@ -1675,19 +1675,19 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--bg-card);
+		background: rgba(0, 0, 0, 0.5);
 		backdrop-filter: blur(12px);
-		border: 1px solid var(--border-color);
+		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-md);
-		color: var(--fg-secondary);
+		color: rgba(255, 255, 255, 0.7);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
 
 	.control-btn:hover {
-		background: var(--bg-card-hover);
-		border-color: var(--border-color-hover);
-		color: var(--fg-primary);
+		background: rgba(0, 0, 0, 0.7);
+		border-color: rgba(255, 255, 255, 0.2);
+		color: #eee;
 		transform: scale(1.05);
 	}
 
