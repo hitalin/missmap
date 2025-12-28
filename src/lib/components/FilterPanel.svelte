@@ -14,9 +14,9 @@
 	let isExpanded = $state(defaultOpen);
 
 	const scaleOptions: { value: ServerScale; label: string }[] = [
-		{ value: 'large', label: '大規模 (1000人以上)' },
-		{ value: 'medium', label: '中規模 (100〜1000人)' },
-		{ value: 'small', label: '小規模 (100人以下)' }
+		{ value: 'large', label: '大' },
+		{ value: 'medium', label: '中' },
+		{ value: 'small', label: '小' }
 	];
 
 	const registrationOptions: { value: RegistrationStatus; label: string }[] = [
@@ -123,10 +123,10 @@
 
 	<section>
 		<h4>規模</h4>
-		<div class="scale-buttons">
+		<div class="chip-group">
 			{#each scaleOptions as { value, label }}
 				<button
-					class="scale-btn"
+					class="filter-chip"
 					class:active={filter.scale.includes(value)}
 					onclick={() => toggleScale(value)}
 				>
@@ -233,37 +233,6 @@
 	}
 
 	.filter-chip.active {
-		background: rgba(134, 179, 0, 0.15);
-		border-color: var(--accent-600);
-		color: var(--accent-400);
-	}
-
-	/* Scale buttons */
-	.scale-buttons {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.scale-btn {
-		width: 100%;
-		padding: 0.375rem 0.625rem;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius-sm);
-		font-size: 0.75rem;
-		color: var(--fg-secondary);
-		text-align: left;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.scale-btn:hover {
-		background: rgba(255, 255, 255, 0.08);
-		border-color: var(--border-color-hover);
-	}
-
-	.scale-btn.active {
 		background: rgba(134, 179, 0, 0.15);
 		border-color: var(--accent-600);
 		color: var(--accent-400);
