@@ -135,7 +135,7 @@
 
 <style>
 	.search-panel {
-		padding: 0.5rem 0.75rem;
+		padding: 0.5rem 0.625rem;
 		position: relative;
 		z-index: 10;
 	}

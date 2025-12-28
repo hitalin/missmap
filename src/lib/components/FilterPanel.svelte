@@ -140,7 +140,7 @@
 
 <style>
 	.filter-panel {
-		padding: 0.5rem 0.75rem;
+		padding: 0.5rem 0.625rem;
 	}
 
 	.panel-header {

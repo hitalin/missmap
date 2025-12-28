@@ -406,7 +406,7 @@
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		overflow-y: auto;
 	}
 

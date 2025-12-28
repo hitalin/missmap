@@ -38,10 +38,10 @@
 			}
 		}
 
-		// 活動量順にソートして上位3件
+		// 活動量順にソートして上位5件
 		return Array.from(activityMap.values())
 			.sort((a, b) => b.activity - a.activity)
-			.slice(0, 3);
+			.slice(0, 5);
 	});
 
 	// 活動量を読みやすい形式に変換
@@ -80,7 +80,7 @@
 
 <style>
 	.active-federations-panel {
-		padding: 0.5rem 0.75rem;
+		padding: 0.5rem 0.625rem;
 	}
 
 	.panel-header {
