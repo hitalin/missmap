@@ -13,16 +13,14 @@
 	let {
 		servers,
 		federations,
-		seedServer = '',
+		focusHost = '',
 		viewpointServers = [],
-		viewMode = 'merged',
 		onSelectServer
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
-		seedServer?: string;
+		focusHost?: string;
 		viewpointServers?: string[];
-		viewMode?: 'merged' | 'single';
 		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
 	} = $props();
 
@@ -30,10 +28,12 @@
 	let cy: import('cytoscape').Core | null = null;
 	let isDestroying = false;
 	let isInitialized = false;
+	let focusHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
+	let currentFocusedNode: import('cytoscape').NodeSingular | null = null;
 
 	let prevServersLength = 0;
 	let prevFederationsLength = 0;
-	let prevSeedServer = '';
+	let prevFocusHost = '';
 
 	function destroyCy() {
 		if (cy && !isDestroying) {
@@ -53,7 +53,7 @@
 	onMount(() => {
 		prevServersLength = servers.length;
 		prevFederationsLength = federations.length;
-		prevSeedServer = seedServer;
+		prevFocusHost = focusHost;
 
 		// ResizeObserverでコンテナの高さが確定したら初期化
 		const resizeObserver = new ResizeObserver((entries) => {
@@ -76,90 +76,115 @@
 
 		return () => {
 			resizeObserver.disconnect();
+			if (focusHighlightTimeout) {
+				clearTimeout(focusHighlightTimeout);
+			}
 			destroyCy();
 		};
 	});
 
-	// props が変更されたらグラフを再描画
+	// サーバー/連合データが変更されたらグラフを再描画
 	$effect(() => {
 		const serversChanged = servers.length !== prevServersLength;
 		const federationsChanged = federations.length !== prevFederationsLength;
-		const seedChanged = seedServer !== prevSeedServer;
 
-		if ((serversChanged || federationsChanged || seedChanged) && container) {
-			const onlySeedChanged = seedChanged && !serversChanged && !federationsChanged;
-
-			// マージモードでseedServerのみ変更された場合は、ハイライト更新のみ
-			if (onlySeedChanged && viewMode === 'merged' && cy) {
-				const oldSeedServer = prevSeedServer;
-				prevSeedServer = seedServer;
-				updateSeedHighlight(oldSeedServer, seedServer);
-				return;
-			}
-
+		if ((serversChanged || federationsChanged) && container) {
 			prevServersLength = servers.length;
 			prevFederationsLength = federations.length;
-			prevSeedServer = seedServer;
 
 			destroyCy();
 			initGraph();
 		}
 	});
 
-	// seedServerのハイライトのみを更新（レイアウト再計算なし）
-	function updateSeedHighlight(oldSeed: string, newSeed: string) {
+	// focusHostが変更されたらカメラ移動＋一時ハイライト
+	$effect(() => {
+		const focusChanged = focusHost !== prevFocusHost;
+
+		if (focusChanged && cy && focusHost) {
+			prevFocusHost = focusHost;
+			focusOnNode(focusHost);
+		} else if (focusChanged) {
+			prevFocusHost = focusHost;
+		}
+	});
+
+	// ノードにフォーカス（カメラ移動＋一時ハイライト）
+	function focusOnNode(host: string) {
 		if (!cy) return;
 
-		// 古いseedServerのハイライトを解除
-		if (oldSeed) {
-			const oldNode = cy.getElementById(oldSeed);
-			if (oldNode.length > 0) {
-				oldNode.data('isSeed', false);
-				const isViewpoint = oldNode.data('isViewpoint');
-				const nodeColor = oldNode.data('color');
-				const borderWidth = oldNode.data('borderWidth');
+		const node = cy.getElementById(host);
+		if (node.length === 0) return;
 
-				if (isViewpoint) {
-					oldNode.style({
-						'border-width': 3,
-						'border-color': '#86b300',
-						'border-style': 'solid'
-					});
-				} else {
-					oldNode.style({
-						'border-width': borderWidth,
-						'border-color': nodeColor,
-						'border-style': 'solid'
-					});
-				}
-				// エッジのハイライトも解除
-				oldNode.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
-					edge.style({
-						'line-color': edge.data('color'),
-						opacity: edge.data('opacity')
-					});
-				});
-			}
+		// 前のハイライトタイマーをクリア
+		if (focusHighlightTimeout) {
+			clearTimeout(focusHighlightTimeout);
 		}
 
-		// 新しいseedServerをハイライト（マウスオーバーと同じスタイル）
-		if (newSeed) {
-			const newNode = cy.getElementById(newSeed);
-			if (newNode.length > 0) {
-				newNode.data('isSeed', true);
-				newNode.style({
-					'border-width': 4,
-					'border-color': '#fff',
-					'border-style': 'solid'
-				});
-				// 接続エッジもハイライト
-				newNode.connectedEdges().style({
-					'line-color': 'rgba(255, 255, 255, 0.7)',
-					opacity: 1
-				});
-			}
+		// 前のフォーカスノードのハイライトを解除
+		if (currentFocusedNode && currentFocusedNode.id() !== host) {
+			clearFocusHighlight(currentFocusedNode);
 		}
+
+		// ノードにカメラを移動（アニメーション付き）
+		cy.animate({
+			center: { eles: node },
+			zoom: Math.min(cy.zoom() * 1.2, 2), // 少しズームイン
+			duration: 500,
+			easing: 'ease-out-cubic'
+		});
+
+		// ノードをハイライト
+		node.style({
+			'border-width': 6,
+			'border-color': '#fff',
+			'border-style': 'solid'
+		});
+		node.connectedEdges().style({
+			'line-color': 'rgba(255, 255, 255, 0.8)',
+			opacity: 1
+		});
+
+		currentFocusedNode = node;
+
+		// 3秒後にハイライトを解除
+		focusHighlightTimeout = setTimeout(() => {
+			clearFocusHighlight(node);
+			currentFocusedNode = null;
+		}, 3000);
 	}
+
+	// フォーカスハイライトを解除
+	function clearFocusHighlight(node: import('cytoscape').NodeSingular) {
+		if (!cy) return;
+
+		const isViewpoint = node.data('isViewpoint');
+		const nodeColor = node.data('color');
+		const borderWidth = node.data('borderWidth');
+
+		if (isViewpoint) {
+			node.style({
+				'border-width': 3,
+				'border-color': '#86b300',
+				'border-style': 'solid'
+			});
+		} else {
+			node.style({
+				'border-width': borderWidth,
+				'border-color': nodeColor,
+				'border-style': 'solid'
+			});
+		}
+
+		// エッジを元に戻す
+		node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
+			edge.style({
+				'line-color': edge.data('color'),
+				opacity: edge.data('opacity')
+			});
+		});
+	}
+
 
 	async function initGraph() {
 		// コンテナが準備されていない場合は中断
@@ -172,16 +197,6 @@
 		// 既知のサーバーホスト
 		const serverHosts = new Set(servers.map((s) => s.host));
 
-		// 種サーバーからの連合先を収集（未知のサーバーも含む）
-		const federatedHosts = new Set<string>();
-		for (const fed of federations) {
-			if (fed.sourceHost === seedServer) {
-				federatedHosts.add(fed.targetHost);
-			}
-			if (fed.targetHost === seedServer) {
-				federatedHosts.add(fed.sourceHost);
-			}
-		}
 
 		// 視点サーバーのセット（MisskeyHubにないサーバーでも表示対象に含める）
 		const viewpointHosts = new Set<string>();
@@ -267,11 +282,7 @@
 		});
 
 		// 連合関係があるサーバーのみをノードとして表示
-		// 種サーバーは常に表示、種サーバーからの連合先も表示
 		const connectedHosts = new Set<string>();
-		if (seedServer) {
-			connectedHosts.add(seedServer);
-		}
 		for (const edge of edgeMap.values()) {
 			connectedHosts.add(edge.source);
 			connectedHosts.add(edge.target);
@@ -295,7 +306,6 @@
 
 		for (const host of connectedHosts) {
 			const server = serverMap.get(host);
-			const isSeed = host === seedServer;
 
 			let size: number;
 			let label: string;
@@ -318,7 +328,7 @@
 				iconUrl = server.iconUrl || '';
 				hasIcon = !!server.iconUrl;
 			} else {
-				// 未知のサーバー（種サーバーからの連合先）
+				// 未知のサーバー（連合先）
 				size = 15;
 				label = host;
 				repositoryUrl = null;
@@ -336,7 +346,6 @@
 					color: getRepositoryColor(repositoryUrl),
 					iconUrl,
 					hasIcon,
-					isSeed,
 					isViewpoint
 				}
 			});
@@ -394,14 +403,6 @@
 					style: {
 						'border-width': 4,
 						'border-color': '#fff'
-					}
-				},
-				{
-					selector: 'node[?isSeed]',
-					style: {
-						'border-width': 4,
-						'border-color': '#fff',
-						'border-style': 'solid'
 					}
 				},
 				{
@@ -477,35 +478,15 @@
 		}
 
 		function unhighlightNode(node: import('cytoscape').NodeSingular) {
-			const isSeed = node.data('isSeed');
 			const isViewpoint = node.data('isViewpoint');
 			const nodeColor = node.data('color');
 			const borderWidth = node.data('borderWidth');
 
-			if (isSeed) {
-				// seedServerはマウスオーバーと同じハイライトを維持
-				node.style({
-					'border-width': 4,
-					'border-color': '#fff',
-					'border-style': 'solid'
-				});
-				// エッジもハイライトを維持
-				node.connectedEdges().style({
-					'line-color': 'rgba(255, 255, 255, 0.7)',
-					opacity: 1
-				});
-			} else if (isViewpoint) {
+			if (isViewpoint) {
 				node.style({
 					'border-width': 3,
 					'border-color': '#86b300',
 					'border-style': 'solid'
-				});
-				// エッジは元に戻す
-				node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
-					edge.style({
-						'line-color': edge.data('color'),
-						opacity: edge.data('opacity')
-					});
 				});
 			} else {
 				node.style({
@@ -513,14 +494,14 @@
 					'border-color': nodeColor,
 					'border-style': 'solid'
 				});
-				// エッジは元に戻す
-				node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
-					edge.style({
-						'line-color': edge.data('color'),
-						opacity: edge.data('opacity')
-					});
-				});
 			}
+			// エッジは元に戻す
+			node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
+				edge.style({
+					'line-color': edge.data('color'),
+					opacity: edge.data('opacity')
+				});
+			});
 		}
 
 		// サーバー情報のマップを作成（タップ時に使用）

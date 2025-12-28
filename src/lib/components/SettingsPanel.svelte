@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { DEFAULT_SETTINGS, type UserSettings, type ViewMode } from '$lib/types';
+	import { DEFAULT_SETTINGS, type UserSettings } from '$lib/types';
 
-	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
+	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
 		settings: UserSettings;
 		onAddViewpoint: (host: string) => void;
+		onFocusViewpoint?: (host: string) => void;
 		ssrViewpoints: string[];
 		defaultViewpoints: string[];
 		isMobile?: boolean;
@@ -19,8 +20,9 @@
 		const host = inputValue.trim().toLowerCase();
 		if (host && !settings.viewpointServers.includes(host)) {
 			settings.viewpointServers = [...settings.viewpointServers, host];
-			settings.seedServer = host;
 			onAddViewpoint(host);
+			// 追加したサーバーにフォーカス
+			onFocusViewpoint?.(host);
 		}
 		inputValue = '';
 		isAdding = false;
@@ -28,14 +30,11 @@
 
 	function handleRemove(host: string) {
 		settings.viewpointServers = settings.viewpointServers.filter(h => h !== host);
-		if (settings.seedServer === host) {
-			settings.seedServer = settings.viewpointServers[0] ?? 'misskey.io';
-		}
 	}
 
 	function handleFocus(host: string) {
-		// 同じサーバーをクリックしたら選択解除、違うサーバーなら選択
-		settings.seedServer = settings.seedServer === host ? '' : host;
+		// クリックでそのサーバーにフォーカス（グラフをパン）
+		onFocusViewpoint?.(host);
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -47,10 +46,6 @@
 		}
 	}
 
-	function toggleViewMode() {
-		settings.viewMode = settings.viewMode === 'merged' ? 'single' : 'merged';
-	}
-
 	// SSRで取得済みかどうかを判定
 	function isFromSSR(host: string): boolean {
 		return ssrViewpoints.includes(host);
@@ -60,7 +55,6 @@
 	function handleResetToDefault() {
 		if (defaultViewpoints.length > 0) {
 			settings.viewpointServers = [...defaultViewpoints];
-			settings.seedServer = defaultViewpoints[0];
 		}
 	}
 
@@ -95,43 +89,11 @@
 	{/if}
 
 	{#if !isMobile || isExpanded}
-	<!-- 表示モード切替 -->
-	<div class="view-mode-toggle">
-		<button
-			class="mode-btn"
-			class:active={settings.viewMode === 'merged'}
-			onclick={() => settings.viewMode = 'merged'}
-		>
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="3" />
-				<circle cx="5" cy="6" r="2" />
-				<circle cx="19" cy="6" r="2" />
-				<circle cx="5" cy="18" r="2" />
-				<circle cx="19" cy="18" r="2" />
-			</svg>
-			マージ
-		</button>
-		<button
-			class="mode-btn"
-			class:active={settings.viewMode === 'single'}
-			onclick={() => settings.viewMode = 'single'}
-		>
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<circle cx="12" cy="12" r="4" />
-				<line x1="12" y1="2" x2="12" y2="6" />
-				<line x1="12" y1="18" x2="12" y2="22" />
-				<line x1="2" y1="12" x2="6" y2="12" />
-				<line x1="18" y1="12" x2="22" y2="12" />
-			</svg>
-			単一
-		</button>
-	</div>
-
 	<!-- 視点サーバーリスト -->
 	<div class="viewpoint-chips">
 		{#each settings.viewpointServers as host (host)}
-			<div class="viewpoint-chip" class:active={settings.seedServer === host}>
-				<button class="chip-main" onclick={() => handleFocus(host)}>
+			<div class="viewpoint-chip">
+				<button class="chip-main" onclick={() => handleFocus(host)} title="グラフ上でフォーカス">
 					{host}
 					{#if isFromSSR(host)}
 						<span class="ssr-dot" title="SSRで取得済み"></span>
@@ -259,48 +221,6 @@
 		letter-spacing: -0.01em;
 	}
 
-	/* View Mode Toggle */
-	.view-mode-toggle {
-		display: flex;
-		gap: 0.125rem;
-		margin-bottom: 0.5rem;
-		background: rgba(0, 0, 0, 0.2);
-		border-radius: var(--radius-sm);
-		padding: 0.125rem;
-	}
-
-	.mode-btn {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.25rem;
-		padding: 0.375rem;
-		background: transparent;
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: 0.7rem;
-		font-weight: 500;
-		color: var(--fg-muted);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.mode-btn svg {
-		width: 12px;
-		height: 12px;
-	}
-
-	.mode-btn:hover {
-		color: var(--fg-secondary);
-		background: rgba(255, 255, 255, 0.05);
-	}
-
-	.mode-btn.active {
-		background: var(--accent-600);
-		color: white;
-	}
-
 	/* Viewpoint Chips */
 	.viewpoint-chips {
 		display: flex;
@@ -319,9 +239,8 @@
 		transition: all var(--transition-fast);
 	}
 
-	.viewpoint-chip.active {
-		background: rgba(134, 179, 0, 0.15);
-		border-color: var(--accent-600);
+	.viewpoint-chip:hover {
+		border-color: var(--border-color-hover);
 	}
 
 	.chip-main {
@@ -336,10 +255,6 @@
 		color: var(--fg-secondary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
-	}
-
-	.viewpoint-chip.active .chip-main {
-		color: var(--accent-400);
 	}
 
 	.chip-main:hover {

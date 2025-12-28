@@ -32,16 +32,10 @@ export const DEFAULT_FILTER: ServerFilter = {
 	scale: []
 };
 
-export type ViewMode = 'merged' | 'single';
-
 export interface UserSettings {
-	seedServer: string; // 現在フォーカス中のサーバー
 	viewpointServers: string[]; // 視点サーバーのリスト
-	viewMode: ViewMode; // 表示モード
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-	seedServer: 'misskey.io',
-	viewpointServers: ['misskey.io'],
-	viewMode: 'merged'
+	viewpointServers: ['misskey.io']
 };

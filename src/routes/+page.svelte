@@ -46,6 +46,7 @@
 	let isLoading = $state(false);
 	let additionalFederations = $state<FederationInfo[]>([]); // 追加取得した連合情報
 	let initialized = $state(false);
+	let focusHost = $state(''); // グラフ上でフォーカスするホスト（一時的）
 
 	// SSRで取得済みの視点サーバーリスト
 	let ssrViewpoints = $derived(() => {
@@ -73,17 +74,14 @@
 					if (!parsed.viewpointServers) {
 						parsed.viewpointServers = [parsed.seedServer || 'misskey.io'];
 					}
-					if (!parsed.viewMode) {
-						parsed.viewMode = 'merged';
-					}
-					settings = parsed;
+					// viewModeは廃止されたので、viewpointServersのみ使用
+					settings = { viewpointServers: parsed.viewpointServers };
 				} catch {
 					// ignore
 				}
 			} else if (defaultViewpoints().length > 0) {
 				// ローカルストレージに設定がない場合、SSRのデフォルト視点サーバーを使用
 				settings.viewpointServers = defaultViewpoints();
-				settings.seedServer = defaultViewpoints()[0];
 			}
 			// 視点サーバーリストにあるがSSRデータにないサーバーから連合情報を取得
 			const ssrHosts = new Set(ssrViewpoints());
@@ -119,13 +117,8 @@
 		return Array.from(fedMap.values());
 	});
 
-	// 表示モードに応じた連合情報
+	// 視点サーバーからの連合情報をフィルター
 	let displayFederations = $derived(() => {
-		if (settings.viewMode === 'single') {
-			// 単一モード: 現在の視点サーバーからの連合のみ
-			return allFederations().filter(f => f.sourceHost === settings.seedServer);
-		}
-		// マージモード: 全視点サーバーからの連合
 		return allFederations().filter(f => settings.viewpointServers.includes(f.sourceHost));
 	});
 
@@ -162,6 +155,11 @@
 			federationError = `${seedHost} への接続に失敗しました`;
 			return [];
 		}
+	}
+
+	// 視点サーバーにフォーカス
+	function handleFocusViewpoint(host: string) {
+		focusHost = host;
 	}
 
 	// 視点サーバー追加時の処理
@@ -311,7 +309,7 @@
 	<!-- モバイル: パネルを上部に配置 -->
 	{#if isMobile}
 		<div class="mobile-panels">
-			<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
+			<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
 			<FilterPanel bind:filter availableRepositories={availableRepositories()} {isMobile} defaultOpen={false} />
 			<Legend />
 		</div>
@@ -321,7 +319,7 @@
 		<!-- デスクトップ: サイドバー -->
 		{#if !isMobile}
 			<aside class="sidebar">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
 				<FilterPanel bind:filter availableRepositories={availableRepositories()} />
 				<Legend />
 				<StatsPanel
@@ -349,16 +347,15 @@
 			{#if isLoading}
 				<div class="graph-placeholder loading">
 					<div class="spinner"></div>
-					<span class="loading-text">{settings.seedServer} から連合情報を取得中...</span>
+					<span class="loading-text">連合情報を取得中...</span>
 				</div>
 			{:else if filteredServers().length > 0}
 				<div class="graph-container">
 					<FederationGraph
 						servers={filteredServers()}
 						federations={displayFederations()}
-						seedServer={settings.seedServer}
+						focusHost={focusHost}
 						viewpointServers={settings.viewpointServers}
-						viewMode={settings.viewMode}
 						onSelectServer={handleSelectServer}
 					/>
 				</div>
