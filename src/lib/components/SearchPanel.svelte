@@ -119,7 +119,7 @@
 						onclick={() => handleSelect(result.host)}
 					>
 						<span class="result-host">{result.host}</span>
-						{#if result.usersCount !== undefined}
+						{#if result.usersCount != null}
 							<span class="result-users">{result.usersCount.toLocaleString()} users</span>
 						{/if}
 					</button>

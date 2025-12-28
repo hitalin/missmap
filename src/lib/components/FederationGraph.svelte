@@ -35,6 +35,14 @@
 	let prevFederationsLength = 0;
 	let prevFocusHost = '';
 
+	// 宇宙空間の慣性パン用の状態
+	let panVelocity = { x: 0, y: 0 };
+	let lastPanPosition = { x: 0, y: 0 };
+	let isPanning = false;
+	let inertiaAnimationId: number | null = null;
+	const FRICTION = 0.95; // 摩擦係数（小さいほど早く止まる）
+	const MIN_VELOCITY = 0.5; // 最小速度（これ以下で停止）
+
 	function destroyCy() {
 		if (cy && !isDestroying) {
 			isDestroying = true;
@@ -48,6 +56,36 @@
 			cy = null;
 			isDestroying = false;
 		}
+	}
+
+	// 慣性アニメーションを停止
+	function stopInertia() {
+		if (inertiaAnimationId !== null) {
+			cancelAnimationFrame(inertiaAnimationId);
+			inertiaAnimationId = null;
+		}
+		panVelocity = { x: 0, y: 0 };
+	}
+
+	// 慣性アニメーション
+	function applyInertia() {
+		if (!cy) return;
+
+		// 速度が十分小さければ停止
+		if (Math.abs(panVelocity.x) < MIN_VELOCITY && Math.abs(panVelocity.y) < MIN_VELOCITY) {
+			stopInertia();
+			return;
+		}
+
+		// 摩擦を適用
+		panVelocity.x *= FRICTION;
+		panVelocity.y *= FRICTION;
+
+		// パン適用
+		cy.panBy({ x: panVelocity.x, y: panVelocity.y });
+
+		// 次のフレーム
+		inertiaAnimationId = requestAnimationFrame(applyInertia);
 	}
 
 	onMount(() => {
@@ -79,6 +117,7 @@
 			if (focusHighlightTimeout) {
 				clearTimeout(focusHighlightTimeout);
 			}
+			stopInertia();
 			destroyCy();
 		};
 	});
@@ -379,7 +418,11 @@
 						'text-margin-y': 5,
 						'border-width': 'data(borderWidth)',
 						'border-color': 'data(color)',
-						'transition-property': 'border-color, width, height',
+						// 宇宙空間の星のようなグロー効果
+						'overlay-padding': 8,
+						'overlay-opacity': 0,
+						'overlay-color': 'data(color)',
+						'transition-property': 'border-color, width, height, overlay-opacity',
 						'transition-duration': 200
 					}
 				},
@@ -394,7 +437,7 @@
 				{
 					selector: 'node:active',
 					style: {
-						'overlay-opacity': 0.2,
+						'overlay-opacity': 0.3,
 						'overlay-color': '#fff'
 					}
 				},
@@ -419,7 +462,7 @@
 						width: 'data(weight)',
 						'line-color': 'data(color)',
 						'curve-style': 'bezier',
-						opacity: 'data(opacity)',
+						opacity: 'data(opacity)' as unknown as number,
 						'transition-property': 'line-color, opacity',
 						'transition-duration': 200
 					}
@@ -464,11 +507,12 @@
 			selectionType: 'single'
 		});
 
-		// ノードのハイライト関数
+		// ノードのハイライト関数（宇宙空間のグロー効果）
 		function highlightNode(node: import('cytoscape').NodeSingular) {
 			node.style({
 				'border-width': 4,
-				'border-color': '#fff'
+				'border-color': '#fff',
+				'overlay-opacity': 0.15 // グロー効果
 			});
 			// 接続エッジをハイライト
 			node.connectedEdges().style({
@@ -486,13 +530,15 @@
 				node.style({
 					'border-width': 3,
 					'border-color': '#86b300',
-					'border-style': 'solid'
+					'border-style': 'solid',
+					'overlay-opacity': 0
 				});
 			} else {
 				node.style({
 					'border-width': borderWidth,
 					'border-color': nodeColor,
-					'border-style': 'solid'
+					'border-style': 'solid',
+					'overlay-opacity': 0
 				});
 			}
 			// エッジは元に戻す
@@ -589,6 +635,58 @@
 		// ドラッグは無効化（連合関係の距離感を維持）
 		cy.nodes().ungrabify();
 
+		// 宇宙空間の慣性パン
+		cy.on('viewport', () => {
+			if (isPanning && cy) {
+				const pan = cy.pan();
+				panVelocity = {
+					x: pan.x - lastPanPosition.x,
+					y: pan.y - lastPanPosition.y
+				};
+				lastPanPosition = { x: pan.x, y: pan.y };
+			}
+		});
+
+		cy.on('grab', () => {
+			stopInertia();
+		});
+
+		// パン開始
+		container.addEventListener('mousedown', (e) => {
+			if (e.button === 0) { // 左クリックのみ
+				isPanning = true;
+				stopInertia();
+				if (cy) {
+					const pan = cy.pan();
+					lastPanPosition = { x: pan.x, y: pan.y };
+				}
+			}
+		});
+
+		container.addEventListener('touchstart', () => {
+			isPanning = true;
+			stopInertia();
+			if (cy) {
+				const pan = cy.pan();
+				lastPanPosition = { x: pan.x, y: pan.y };
+			}
+		});
+
+		// パン終了 → 慣性開始
+		const handlePanEnd = () => {
+			if (isPanning) {
+				isPanning = false;
+				// 十分な速度があれば慣性を開始
+				if (Math.abs(panVelocity.x) > MIN_VELOCITY || Math.abs(panVelocity.y) > MIN_VELOCITY) {
+					inertiaAnimationId = requestAnimationFrame(applyInertia);
+				}
+			}
+		};
+
+		container.addEventListener('mouseup', handlePanEnd);
+		container.addEventListener('mouseleave', handlePanEnd);
+		container.addEventListener('touchend', handlePanEnd);
+
 		cy.on('layoutstop', () => {
 			// レイアウト完了後は常に全体表示（力学モデルの結果を尊重）
 			if (cy) {
@@ -599,6 +697,21 @@
 </script>
 
 <div class="graph-wrapper">
+	<!-- 宇宙空間の星 -->
+	<div class="stars-layer" aria-hidden="true">
+		{#each { length: 50 } as _, i}
+			<div
+				class="star"
+				style="
+					left: {Math.random() * 100}%;
+					top: {Math.random() * 100}%;
+					--size: {0.5 + Math.random() * 2}px;
+					--delay: {Math.random() * 3}s;
+					--duration: {2 + Math.random() * 3}s;
+				"
+			></div>
+		{/each}
+	</div>
 	<div class="graph" bind:this={container}></div>
 
 	<!-- Graph controls overlay -->
@@ -639,12 +752,48 @@
 		flex: 1;
 		min-height: 0;
 		height: 100%;
-		background: radial-gradient(ellipse at center, rgba(134, 179, 0, 0.03) 0%, transparent 70%);
+		/* 宇宙空間の背景 - 中央にほんのり明るい星雲 */
+		background:
+			radial-gradient(ellipse at 30% 40%, rgba(100, 140, 200, 0.04) 0%, transparent 50%),
+			radial-gradient(ellipse at 70% 60%, rgba(160, 100, 180, 0.03) 0%, transparent 50%),
+			radial-gradient(ellipse at center, rgba(134, 179, 0, 0.05) 0%, transparent 60%);
+		overflow: hidden;
+	}
+
+	/* 星のレイヤー */
+	.stars-layer {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		z-index: 0;
+	}
+
+	.star {
+		position: absolute;
+		width: var(--size);
+		height: var(--size);
+		background: white;
+		border-radius: 50%;
+		opacity: 0.6;
+		animation: twinkle var(--duration) ease-in-out var(--delay) infinite;
+	}
+
+	@keyframes twinkle {
+		0%, 100% {
+			opacity: 0.3;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.9;
+			transform: scale(1.2);
+		}
 	}
 
 	.graph {
+		position: relative;
 		width: 100%;
 		height: 100%;
+		z-index: 1;
 	}
 
 	/* Controls */
