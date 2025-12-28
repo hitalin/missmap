@@ -1711,11 +1711,19 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		padding: 0.5rem 0.625rem;
-		background: rgba(0, 0, 0, 0.5);
+		background: rgba(255, 255, 255, 0.9);
 		backdrop-filter: blur(8px);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-sm);
 		z-index: 10;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.graph-legend {
+			background: rgba(0, 0, 0, 0.5);
+			box-shadow: none;
+		}
 	}
 
 	.legend-item {

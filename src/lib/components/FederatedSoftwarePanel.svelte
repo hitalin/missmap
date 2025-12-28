@@ -192,8 +192,8 @@
 		align-items: center;
 		gap: 0.25rem;
 		padding: 0.25rem 0.5rem;
-		background: rgba(0, 0, 0, 0.1);
-		border: 1px solid transparent;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		font-size: 0.65rem;
 		color: var(--fg-secondary);

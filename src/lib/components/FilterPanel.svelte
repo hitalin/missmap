@@ -243,7 +243,7 @@
 
 	.filter-chip {
 		padding: 0.25rem 0.5rem;
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--bg-tertiary);
 		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		font-size: 0.7rem;
@@ -253,7 +253,7 @@
 	}
 
 	.filter-chip:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--bg-card-hover);
 		border-color: var(--border-color-hover);
 	}
 

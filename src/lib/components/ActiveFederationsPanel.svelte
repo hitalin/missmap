@@ -155,8 +155,8 @@
 		justify-content: space-between;
 		width: 100%;
 		padding: 0.375rem 0.5rem;
-		background: rgba(0, 0, 0, 0.1);
-		border: 1px solid transparent;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border-color);
 		border-radius: var(--radius-sm);
 		font-size: 0.75rem;
 		color: var(--fg-secondary);

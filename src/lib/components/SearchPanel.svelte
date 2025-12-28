@@ -205,7 +205,7 @@
 	input {
 		width: 100%;
 		padding: 0.5rem 2rem 0.5rem 0.75rem;
-		background: rgba(0, 0, 0, 0.2);
+		background: var(--bg-card);
 		border: 1px solid var(--border-color);
 		border-radius: var(--radius-md);
 		font-size: 0.8rem;
@@ -246,7 +246,7 @@
 	}
 
 	.clear-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--bg-tertiary);
 		color: var(--fg-secondary);
 	}
 
