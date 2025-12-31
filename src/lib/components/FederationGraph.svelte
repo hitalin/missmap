@@ -88,7 +88,6 @@
 	let prevServersLength = 0;
 	let prevFederationsLength = 0;
 	let prevFocusHost = '';
-	let redrawDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// 宇宙空間の慣性パン用の状態
 	let panVelocity = { x: 0, y: 0 };
@@ -317,15 +316,13 @@
 			if (focusHighlightTimeout) {
 				clearTimeout(focusHighlightTimeout);
 			}
-			if (redrawDebounceTimeout) {
-				clearTimeout(redrawDebounceTimeout);
-			}
 			stopInertia();
 			destroyCy();
 		};
 	});
 
-	// サーバー/連合データが変更されたらグラフを再描画（デバウンス付き）
+	// サーバー/連合データが変更されたらグラフを再描画
+	// viewpointServers変更時はグラフ全体を再描画せず、ハイライトのみ更新
 	$effect(() => {
 		const serversChanged = servers.length !== prevServersLength;
 		const federationsChanged = federations.length !== prevFederationsLength;
@@ -334,16 +331,46 @@
 			prevServersLength = servers.length;
 			prevFederationsLength = federations.length;
 
-			// デバウンス: 連続した変更があった場合は最後の変更のみ反映（ちらつき防止）
-			if (redrawDebounceTimeout) {
-				clearTimeout(redrawDebounceTimeout);
-			}
+			// データ変更時のみ再描画（視点サーバー変更では再描画しない）
+			destroyCy();
+			initGraph();
+		}
+	});
 
-			redrawDebounceTimeout = setTimeout(() => {
-				destroyCy();
-				initGraph();
-				redrawDebounceTimeout = null;
-			}, 50); // 50ms以内の変更はバッチ化
+	// 視点サーバー変更時はハイライトのみ更新（グラフ再描画なし）
+	let prevViewpointServers: string[] = [];
+	$effect(() => {
+		// 視点サーバーの変更を検出
+		const currentViewpoints = JSON.stringify(viewpointServers.slice().sort());
+		const prevViewpoints = JSON.stringify(prevViewpointServers.slice().sort());
+
+		if (currentViewpoints !== prevViewpoints && cy) {
+			prevViewpointServers = [...viewpointServers];
+
+			// ノードのハイライトを更新（再描画なし）
+			cy.nodes().forEach((node: import('cytoscape').NodeSingular) => {
+				const isViewpoint = viewpointServers.includes(node.id());
+				if (isViewpoint) {
+					node.data('isViewpoint', true);
+					node.style({
+						'border-width': 3,
+						'border-color': '#86b300',
+						'border-style': 'solid'
+					});
+				} else {
+					node.data('isViewpoint', false);
+					const nodeColor = node.data('color');
+					const borderWidth = node.data('borderWidth');
+					node.style({
+						'border-width': borderWidth,
+						'border-color': nodeColor,
+						'border-style': 'solid'
+					});
+				}
+			});
+
+			// 疎通チェックを再実行
+			checkViewpointConnectivity();
 		}
 	});
 

@@ -223,39 +223,56 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 		const knownHosts = new Set(japaneseServers.map((s) => s.host));
 
-		// アクティブ閲覧ユーザー数（dru15）が多いサーバーを上位5件選定（デフォルト視点サーバー）
-		// dru15 = Daily Read Users (15日平均) - 実際にアクティブに閲覧しているユーザー数
-		const topActiveServers = data.instancesInfos
+		// ヘルパー関数: URLからホスト名を抽出
+		const extractHost = (url: string): string => {
+			let host = url;
+			try {
+				if (host.includes('://')) {
+					host = new URL(host).hostname;
+				}
+				host = host.replace(/\/$/, '');
+			} catch {
+				// パースに失敗したらそのまま使用
+			}
+			return host;
+		};
+
+		// 全基準（dru15, npd15, users）のトップ10を事前計算（クライアント側でAPI呼び出し不要に）
+		const topByDru15 = data.instancesInfos
 			.filter((instance) => instance.langs.includes('ja') && instance.isAlive && (instance.dru15 ?? 0) > 0)
 			.sort((a, b) => (b.dru15 ?? 0) - (a.dru15 ?? 0))
-			.slice(0, 5)
-			.map((instance) => {
-				let host = instance.url;
-				try {
-					if (host.includes('://')) {
-						host = new URL(host).hostname;
-					}
-					host = host.replace(/\/$/, '');
-				} catch {
-					// パースに失敗したらそのまま使用
-				}
-				return host;
-			});
+			.slice(0, 10)
+			.map(instance => extractHost(instance.url));
 
-		// デフォルトの視点サーバーリスト
-		const defaultViewpoints = topActiveServers;
+		const topByNpd15 = data.instancesInfos
+			.filter((instance) => instance.langs.includes('ja') && instance.isAlive && (instance.npd15 ?? 0) > 0)
+			.sort((a, b) => (b.npd15 ?? 0) - (a.npd15 ?? 0))
+			.slice(0, 10)
+			.map(instance => extractHost(instance.url));
 
-		// 正常な連合関係とブロック関係を視点サーバーから取得
+		const topByUsers = japaneseServers
+			.filter((server) => (server.usersCount ?? 0) > 0)
+			.sort((a, b) => (b.usersCount ?? 0) - (a.usersCount ?? 0))
+			.slice(0, 10)
+			.map(server => server.host);
+
+		// 全候補を統合（重複排除）
+		const allCandidates = Array.from(new Set([...topByDru15, ...topByNpd15, ...topByUsers]));
+
+		// 全候補の連合情報を並列取得（一度に全部取得して使い回す）
 		const [federationsArrays, blockedArrays] = await Promise.all([
-			Promise.all(topActiveServers.map((host) => fetchFederations(host, knownHosts))),
-			Promise.all(topActiveServers.map((host) => fetchBlockedRelations(host, knownHosts)))
+			Promise.all(allCandidates.map((host) => fetchFederations(host, knownHosts))),
+			Promise.all(allCandidates.map((host) => fetchBlockedRelations(host, knownHosts)))
 		]);
 		const federations = [...federationsArrays.flat(), ...blockedArrays.flat()];
 
 		return {
 			servers: japaneseServers,
 			federations,
-			defaultViewpoints
+			defaultViewpoints: topByDru15.slice(0, 5), // デフォルトはdru15の上位5件
+			topByDru15,
+			topByNpd15,
+			topByUsers
 		};
 	} catch (e) {
 		console.error('Failed to load servers:', e);

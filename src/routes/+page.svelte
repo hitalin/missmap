@@ -283,7 +283,22 @@
 		return Array.from(hosts);
 	});
 
-	// 各指標ごとのトップサーバーを計算
+	// SSRで事前計算されたトップ候補を取得
+	function getPrecomputedTopServers(criteria: import('$lib/types').ViewpointCriteria): string[] {
+		if (criteria === 'dru15' && (data.topByDru15 as string[] | undefined)) {
+			return (data.topByDru15 as string[]).slice(0, 5);
+		}
+		if (criteria === 'npd15' && (data.topByNpd15 as string[] | undefined)) {
+			return (data.topByNpd15 as string[]).slice(0, 5);
+		}
+		if (criteria === 'users' && (data.topByUsers as string[] | undefined)) {
+			return (data.topByUsers as string[]).slice(0, 5);
+		}
+		// フォールバック: SSRデータがない場合のみクライアント側で計算
+		return calculateTopServers(criteria, data.servers as ServerInfo[], 5);
+	}
+
+	// 各指標ごとのトップサーバーを計算（フォールバック用）
 	function calculateTopServers(criteria: import('$lib/types').ViewpointCriteria, servers: ServerInfo[], count: number = 5): string[] {
 		const sorted = servers.filter(s => {
 			if (criteria === 'dru15') return (s.dru15 ?? 0) > 0;
@@ -302,13 +317,8 @@
 
 	// 現在の選定基準に基づくデフォルト視点サーバー
 	let computedDefaultViewpoints = $derived(() => {
-		// SSRのデフォルトを使用（dru15基準の場合）
-		if (settings.viewpointCriteria === 'dru15' && (data.defaultViewpoints as string[])?.length > 0) {
-			return (data.defaultViewpoints as string[]);
-		}
-		// それ以外の基準では、現在の視点サーバーをデフォルトと見なす
-		// （連合情報がないサーバーを除外した結果が実質的なデフォルト）
-		return settings.viewpointServers;
+		// SSRで事前計算された値を使用（連合情報は全て取得済み）
+		return getPrecomputedTopServers(settings.viewpointCriteria);
 	});
 
 	// SSRから取得したデフォルト視点サーバー（互換性のため）
@@ -484,74 +494,13 @@
 		focusHost = host;
 	}
 
-	// 選定基準変更時の処理
-	async function handleCriteriaChange(criteria: import('$lib/types').ViewpointCriteria) {
-		// 新しい基準でトップ候補を計算（連合情報がないサーバーを除外するため、上位10件を試す）
-		const candidates = calculateTopServers(criteria, data.servers as ServerInfo[], 10);
-		const ssrHosts = new Set(ssrViewpoints());
+	// 選定基準変更時の処理（SSRで全データ取得済みのため即時切り替え）
+	function handleCriteriaChange(criteria: import('$lib/types').ViewpointCriteria) {
+		// SSRで事前計算されたトップ候補を取得（連合情報も全て取得済み）
+		const topServers = getPrecomputedTopServers(criteria);
 
-		// SSRで既に取得済みのサーバーと、新規に取得が必要なサーバーを分ける
-		const ssrCandidates = candidates.filter(host => ssrHosts.has(host));
-		const newCandidates = candidates.filter(host => !ssrHosts.has(host));
-
-		// 既にSSRで5件揃っている場合はすぐに返す
-		if (ssrCandidates.length >= 5) {
-			settings.viewpointServers = ssrCandidates.slice(0, 5);
-			return;
-		}
-
-		const needed = 5 - ssrCandidates.length;
-
-		if (newCandidates.length === 0) {
-			// 新規候補がない場合
-			settings.viewpointServers = ssrCandidates.length > 0 ? ssrCandidates :
-				calculateTopServers('dru15', data.servers as ServerInfo[], 5);
-			return;
-		}
-
-		isLoading = true;
-		try {
-			// 並列で全て取得（10件程度なので許容範囲）
-			const results = await Promise.all(
-				newCandidates.map(async (host) => {
-					try {
-						const feds = await fetchSeedFederations(host, false);
-						return { host, federations: feds, success: feds.length > 0 };
-					} catch (e) {
-						console.error(`Failed to fetch federations from ${host}:`, e);
-						return { host, federations: [], success: false };
-					}
-				})
-			);
-
-			// 成功したサーバーから必要数を取得
-			const validResults = results.filter(r => r.success);
-			const validNewHosts = validResults.slice(0, needed).map(r => r.host);
-			const newFederations = validResults.slice(0, needed).flatMap(r => r.federations);
-
-			// 視点サーバーと連合情報をアトミックに更新（グラフ再描画を1回に抑える）
-			const validHosts = [...ssrCandidates, ...validNewHosts].slice(0, 5);
-			const finalHosts = validHosts.length > 0 ? validHosts :
-				calculateTopServers('dru15', data.servers as ServerInfo[], 5);
-
-			// 連合情報をマージ
-			if (newFederations.length > 0) {
-				const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
-				const newFeds = newFederations.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
-				if (newFeds.length > 0) {
-					// 1回のバッチ更新でadditionalFederationsとviewpointServersを同時に変更
-					// これによりFederationGraphの$effectは1回だけトリガーされる
-					additionalFederations = [...additionalFederations, ...newFeds];
-					settings.viewpointServers = finalHosts;
-				} else {
-					settings.viewpointServers = finalHosts;
-				}
-			} else {
-				settings.viewpointServers = finalHosts;
-			}
-		} finally {
-			isLoading = false;
-		}
+		// 即座に切り替え（API呼び出し不要、ローディング不要、グラフ再描画なし）
+		settings.viewpointServers = topServers;
 	}
 
 	// 視点サーバー追加時の処理
