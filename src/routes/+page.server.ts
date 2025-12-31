@@ -12,6 +12,7 @@ interface JoinMisskeyInstance {
 	isAlive: boolean;
 	value?: number; // アクティビティスコア（直近のアクティビティ指標）
 	dru15?: number; // Daily Read Users (15日平均) - アクティブ閲覧ユーザー数
+	npd15?: number; // Notes Per Day (15日平均) - 1日あたりのノート数
 	meta?: {
 		name?: string;
 		description?: string;
@@ -120,7 +121,9 @@ function convertToServerInfo(instance: JoinMisskeyInstance): ServerInfo | null {
 		emailRequired: instance.meta?.emailRequiredForSignup === true,
 		approvalRequired,
 		inviteOnly,
-		ageRestriction
+		ageRestriction,
+		dru15: instance.dru15 ?? null,
+		npd15: instance.npd15 ?? null
 	};
 }
 

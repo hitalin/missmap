@@ -995,7 +995,9 @@
 						emailRequired: false,
 						approvalRequired: false,
 						inviteOnly: false,
-						ageRestriction: 'unknown'
+						ageRestriction: 'unknown',
+						dru15: null,
+						npd15: null
 					}, position);
 				}
 			}
@@ -1234,7 +1236,9 @@
 								emailRequired: false,
 								approvalRequired: false,
 								inviteOnly: false,
-								ageRestriction: 'unknown'
+								ageRestriction: 'unknown',
+								dru15: null,
+								npd15: null
 							}, position);
 						}
 					}

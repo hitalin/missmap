@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { DEFAULT_SETTINGS, type UserSettings } from '$lib/types';
+	import { DEFAULT_SETTINGS, type UserSettings, type ViewpointCriteria } from '$lib/types';
 
-	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
+	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
 		settings: UserSettings;
 		onAddViewpoint: (host: string) => void;
 		onFocusViewpoint?: (host: string) => void;
+		onCriteriaChange?: (criteria: ViewpointCriteria) => void;
 		ssrViewpoints: string[];
 		defaultViewpoints: string[];
 		isMobile?: boolean;
@@ -64,6 +65,30 @@
 		if (settings.viewpointServers.length !== defaultViewpoints.length) return false;
 		return defaultViewpoints.every(h => settings.viewpointServers.includes(h));
 	}
+
+	// 選定基準の選択肢
+	const criteriaOptions: { value: ViewpointCriteria; label: string; description: string }[] = [
+		{
+			value: 'dru15',
+			label: 'アクティブ',
+			description: '実際に閲覧しているユーザー数（15日平均）'
+		},
+		{
+			value: 'npd15',
+			label: '投稿数',
+			description: '1日あたりのノート数（15日平均）'
+		},
+		{
+			value: 'users',
+			label: '規模',
+			description: '総ユーザー数（累計）'
+		}
+	];
+
+	function handleCriteriaChange(criteria: ViewpointCriteria) {
+		settings.viewpointCriteria = criteria;
+		onCriteriaChange?.(criteria);
+	}
 </script>
 
 <div class="settings-panel">
@@ -79,6 +104,23 @@
 	</button>
 
 	{#if isExpanded}
+	<!-- 選定基準の選択 -->
+	<div class="criteria-selector">
+		<label>デフォルト視点の基準:</label>
+		<div class="criteria-buttons">
+			{#each criteriaOptions as option (option.value)}
+				<button
+					class="criteria-btn"
+					class:active={settings.viewpointCriteria === option.value}
+					onclick={() => handleCriteriaChange(option.value)}
+					title={option.description}
+				>
+					{option.label}
+				</button>
+			{/each}
+		</div>
+	</div>
+
 	<div class="viewpoint-chips">
 		{#each settings.viewpointServers as host (host)}
 			<div class="viewpoint-chip">
@@ -201,6 +243,51 @@
 		font-size: 0.85rem;
 		font-weight: 700;
 		letter-spacing: -0.01em;
+	}
+
+	/* Criteria Selector */
+	.criteria-selector {
+		margin-bottom: 0.5rem;
+	}
+
+	.criteria-selector label {
+		display: block;
+		margin-bottom: 0.25rem;
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: var(--fg-secondary);
+	}
+
+	.criteria-buttons {
+		display: flex;
+		gap: 0.25rem;
+		flex-wrap: wrap;
+	}
+
+	.criteria-btn {
+		flex: 1;
+		min-width: fit-content;
+		padding: 0.375rem 0.5rem;
+		background: var(--bg-card);
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-sm);
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: var(--fg-secondary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.criteria-btn:hover {
+		border-color: var(--border-color-hover);
+		color: var(--fg-primary);
+	}
+
+	.criteria-btn.active {
+		background: rgba(134, 179, 0, 0.15);
+		border-color: var(--accent-500);
+		color: var(--accent-400);
+		font-weight: 600;
 	}
 
 	/* Viewpoint Chips */

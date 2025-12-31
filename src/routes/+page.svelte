@@ -283,9 +283,37 @@
 		return Array.from(hosts);
 	});
 
-	// SSRから取得したデフォルト視点サーバー
+	// 各指標ごとのトップサーバーを計算
+	function calculateTopServers(criteria: import('$lib/types').ViewpointCriteria, servers: ServerInfo[], count: number = 5): string[] {
+		const sorted = servers.filter(s => {
+			if (criteria === 'dru15') return (s.dru15 ?? 0) > 0;
+			if (criteria === 'npd15') return (s.npd15 ?? 0) > 0;
+			if (criteria === 'users') return (s.usersCount ?? 0) > 0;
+			return false;
+		}).sort((a, b) => {
+			if (criteria === 'dru15') return (b.dru15 ?? 0) - (a.dru15 ?? 0);
+			if (criteria === 'npd15') return (b.npd15 ?? 0) - (a.npd15 ?? 0);
+			if (criteria === 'users') return (b.usersCount ?? 0) - (a.usersCount ?? 0);
+			return 0;
+		});
+
+		return sorted.slice(0, count).map(s => s.host);
+	}
+
+	// 現在の選定基準に基づくデフォルト視点サーバー
+	let computedDefaultViewpoints = $derived(() => {
+		// SSRのデフォルトを使用（dru15基準の場合）
+		if (settings.viewpointCriteria === 'dru15' && (data.defaultViewpoints as string[])?.length > 0) {
+			return (data.defaultViewpoints as string[]);
+		}
+		// それ以外の基準では、現在の視点サーバーをデフォルトと見なす
+		// （連合情報がないサーバーを除外した結果が実質的なデフォルト）
+		return settings.viewpointServers;
+	});
+
+	// SSRから取得したデフォルト視点サーバー（互換性のため）
 	let defaultViewpoints = $derived(() => {
-		return (data.defaultViewpoints as string[]) ?? [];
+		return computedDefaultViewpoints();
 	});
 
 	// エッジ表示設定（変更検知のため明示的に新しいオブジェクトを生成）
@@ -342,7 +370,10 @@
 							parsed.viewpointServers = [parsed.seedServer || 'misskey.io'];
 						}
 						// viewModeは廃止されたので、viewpointServersのみ使用
-						settings = { viewpointServers: parsed.viewpointServers };
+						settings = {
+						viewpointServers: parsed.viewpointServers,
+						viewpointCriteria: parsed.viewpointCriteria || 'dru15'
+					};
 					} catch {
 						// ignore
 					}
@@ -352,11 +383,11 @@
 				}
 			}
 
-			// 視点サーバーリストにあるがSSRデータにないサーバーから連合情報を取得
+			// 視点サーバーリストにあるがSSRデータにないサーバーから連合情報を取得（エラーは表示しない）
 			const ssrHosts = new Set(ssrViewpoints());
 			for (const host of settings.viewpointServers) {
 				if (!ssrHosts.has(host)) {
-					fetchSeedFederations(host).then((feds) => {
+					fetchSeedFederations(host, false).then((feds) => {
 						const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
 						const newFeds = feds.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
 						if (newFeds.length > 0) {
@@ -415,8 +446,10 @@
 	let federationError = $state<string | null>(null);
 
 	// 種サーバーから連合情報を取得（サーバーサイドAPI経由でCORSを回避）
-	async function fetchSeedFederations(seedHost: string): Promise<FederationInfo[]> {
-		federationError = null;
+	async function fetchSeedFederations(seedHost: string, showError: boolean = true): Promise<FederationInfo[]> {
+		if (showError) {
+			federationError = null;
+		}
 		try {
 			const res = await fetch('/api/federation', {
 				method: 'POST',
@@ -430,14 +463,18 @@
 				if (errorData.error === 'CREDENTIAL_REQUIRED') {
 					privateServers = new Set([...privateServers, seedHost]);
 				}
-				federationError = errorData.message ?? `${seedHost} から連合情報を取得できませんでした`;
+				if (showError) {
+					federationError = errorData.message ?? `${seedHost} から連合情報を取得できませんでした`;
+				}
 				return [];
 			}
 
 			const result = (await res.json()) as { federations: FederationInfo[] };
 			return result.federations;
 		} catch {
-			federationError = `${seedHost} への接続に失敗しました`;
+			if (showError) {
+				federationError = `${seedHost} への接続に失敗しました`;
+			}
 			return [];
 		}
 	}
@@ -445,6 +482,69 @@
 	// 視点サーバーにフォーカス
 	function handleFocusViewpoint(host: string) {
 		focusHost = host;
+	}
+
+	// 選定基準変更時の処理
+	async function handleCriteriaChange(criteria: import('$lib/types').ViewpointCriteria) {
+		// 新しい基準でトップ候補を計算（連合情報がないサーバーを除外するため、上位10件を試す）
+		const candidates = calculateTopServers(criteria, data.servers as ServerInfo[], 10);
+		const ssrHosts = new Set(ssrViewpoints());
+
+		// SSRで既に取得済みのサーバーと、新規に取得が必要なサーバーを分ける
+		const ssrCandidates = candidates.filter(host => ssrHosts.has(host));
+		const newCandidates = candidates.filter(host => !ssrHosts.has(host));
+
+		// 既にSSRで5件揃っている場合はすぐに返す
+		if (ssrCandidates.length >= 5) {
+			settings.viewpointServers = ssrCandidates.slice(0, 5);
+			return;
+		}
+
+		const needed = 5 - ssrCandidates.length;
+
+		if (newCandidates.length === 0) {
+			// 新規候補がない場合
+			settings.viewpointServers = ssrCandidates.length > 0 ? ssrCandidates :
+				calculateTopServers('dru15', data.servers as ServerInfo[], 5);
+			return;
+		}
+
+		isLoading = true;
+		try {
+			// 並列で全て取得（10件程度なので許容範囲）
+			const results = await Promise.all(
+				newCandidates.map(async (host) => {
+					try {
+						const feds = await fetchSeedFederations(host, false);
+						return { host, federations: feds, success: feds.length > 0 };
+					} catch (e) {
+						console.error(`Failed to fetch federations from ${host}:`, e);
+						return { host, federations: [], success: false };
+					}
+				})
+			);
+
+			// 成功したサーバーから必要数を取得
+			const validResults = results.filter(r => r.success);
+			const validNewHosts = validResults.slice(0, needed).map(r => r.host);
+			const newFederations = validResults.slice(0, needed).flatMap(r => r.federations);
+
+			// 視点サーバーを更新
+			const validHosts = [...ssrCandidates, ...validNewHosts].slice(0, 5);
+			settings.viewpointServers = validHosts.length > 0 ? validHosts :
+				calculateTopServers('dru15', data.servers as ServerInfo[], 5);
+
+			// 連合情報をマージ
+			if (newFederations.length > 0) {
+				const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
+				const newFeds = newFederations.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
+				if (newFeds.length > 0) {
+					additionalFederations = [...additionalFederations, ...newFeds];
+				}
+			}
+		} finally {
+			isLoading = false;
+		}
 	}
 
 	// 視点サーバー追加時の処理
@@ -596,7 +696,7 @@
 	{#if isMobile}
 		<div class="mobile-scroll-container">
 			<div class="mobile-panels">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
@@ -674,7 +774,7 @@
 		<!-- デスクトップ: サイドバー -->
 		{#if !isMobile}
 			<aside class="sidebar">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}

@@ -53,10 +53,15 @@ export const DEFAULT_FILTER: ServerFilter = {
 	edgeVisibility: { ...DEFAULT_EDGE_VISIBILITY }
 };
 
+// 視点サーバーの選定基準
+export type ViewpointCriteria = 'dru15' | 'npd15' | 'users';
+
 export interface UserSettings {
 	viewpointServers: string[]; // 視点サーバーのリスト
+	viewpointCriteria: ViewpointCriteria; // デフォルト視点の選定基準
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-	viewpointServers: ['misskey.io']
+	viewpointServers: ['misskey.io'],
+	viewpointCriteria: 'dru15'
 };

@@ -99,6 +99,10 @@ export interface ServerInfo {
 
 	// 年齢制限
 	ageRestriction: 'all' | '13+' | '18+' | 'unknown';
+
+	// アクティビティ指標（joinmisskey API）
+	dru15: number | null; // Daily Read Users (15日平均)
+	npd15: number | null; // Notes Per Day (15日平均)
 }
 
 export interface FederationInstance {
@@ -241,7 +245,11 @@ export async function fetchServerInfo(host: string): Promise<ServerInfo | null> 
 				(data.policies as Record<string, unknown>)?.canInvite === false ||
 				(data.enableRecaptcha as boolean) === false, // 簡易判定
 
-			ageRestriction
+			ageRestriction,
+
+			// アクティビティ指標はMisskey APIでは取得できないのでnull
+			dru15: null,
+			npd15: null
 		};
 	} catch {
 		return null;
