@@ -10,6 +10,8 @@ interface JoinMisskeyInstance {
 	name?: string;
 	description?: string;
 	isAlive: boolean;
+	value?: number; // アクティビティスコア（直近のアクティビティ指標）
+	dru15?: number; // Daily Read Users (15日平均) - アクティブ閲覧ユーザー数
 	meta?: {
 		name?: string;
 		description?: string;
@@ -218,19 +220,32 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 		const knownHosts = new Set(japaneseServers.map((s) => s.host));
 
-		// 大規模サーバーから連合情報を取得（上位5件）= デフォルト視点サーバー
-		const largeServers = japaneseServers
-			.filter((s) => (s.usersCount ?? 0) >= 1000)
-			.sort((a, b) => (b.usersCount ?? 0) - (a.usersCount ?? 0))
-			.slice(0, 5);
+		// アクティブ閲覧ユーザー数（dru15）が多いサーバーを上位5件選定（デフォルト視点サーバー）
+		// dru15 = Daily Read Users (15日平均) - 実際にアクティブに閲覧しているユーザー数
+		const topActiveServers = data.instancesInfos
+			.filter((instance) => instance.langs.includes('ja') && instance.isAlive && (instance.dru15 ?? 0) > 0)
+			.sort((a, b) => (b.dru15 ?? 0) - (a.dru15 ?? 0))
+			.slice(0, 5)
+			.map((instance) => {
+				let host = instance.url;
+				try {
+					if (host.includes('://')) {
+						host = new URL(host).hostname;
+					}
+					host = host.replace(/\/$/, '');
+				} catch {
+					// パースに失敗したらそのまま使用
+				}
+				return host;
+			});
 
 		// デフォルトの視点サーバーリスト
-		const defaultViewpoints = largeServers.map(s => s.host);
+		const defaultViewpoints = topActiveServers;
 
 		// 正常な連合関係とブロック関係を視点サーバーから取得
 		const [federationsArrays, blockedArrays] = await Promise.all([
-			Promise.all(largeServers.map((s) => fetchFederations(s.host, knownHosts))),
-			Promise.all(largeServers.map((s) => fetchBlockedRelations(s.host, knownHosts)))
+			Promise.all(topActiveServers.map((host) => fetchFederations(host, knownHosts))),
+			Promise.all(topActiveServers.map((host) => fetchBlockedRelations(host, knownHosts)))
 		]);
 		const federations = [...federationsArrays.flat(), ...blockedArrays.flat()];
 
