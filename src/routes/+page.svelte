@@ -266,6 +266,7 @@
 	let filter: ServerFilter = $state({ ...DEFAULT_FILTER });
 	let settings: UserSettings = $state({ ...DEFAULT_SETTINGS });
 	let isLoading = $state(false);
+	let loadingProgress = $state(0); // ローディング進捗（0-100）
 	let additionalFederations = $state<FederationInfo[]>([]); // 追加取得した連合情報
 	let privateServers = $state<Set<string>>(new Set()); // 連合情報を公開していないサーバー
 	let initialized = $state(false);
@@ -510,18 +511,26 @@
 		}
 
 		isLoading = true;
+		loadingProgress = 0;
 		try {
+			loadingProgress = 30;
 			const federations = await fetchSeedFederations(host);
+			loadingProgress = 70;
 			// 追加データとしてマージ（既存を保持しつつ追加）
 			const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
 			const newFeds = federations.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
 			if (newFeds.length > 0) {
 				additionalFederations = [...additionalFederations, ...newFeds];
 			}
+			loadingProgress = 100;
 		} catch (e) {
 			console.error('Failed to fetch federations:', e);
 		} finally {
-			isLoading = false;
+			// フェードアウト用の遅延
+			setTimeout(() => {
+				isLoading = false;
+				loadingProgress = 0;
+			}, 200);
 		}
 	}
 
@@ -681,8 +690,13 @@
 				{/if}
 				{#if isLoading}
 					<div class="graph-placeholder loading">
-						<div class="spinner"></div>
-						<span class="loading-text">連合情報を取得中...</span>
+						<div class="loading-progress">
+							<div class="spinner"></div>
+							<div class="progress-bar">
+								<div class="progress-fill" style="width: {loadingProgress}%"></div>
+							</div>
+							<span class="loading-text">連合情報を取得中... {loadingProgress}%</span>
+						</div>
 					</div>
 				{:else if filteredServers().length > 0}
 					<div class="graph-container">
@@ -750,8 +764,13 @@
 			{/if}
 			{#if isLoading}
 				<div class="graph-placeholder loading">
-					<div class="spinner"></div>
-					<span class="loading-text">連合情報を取得中...</span>
+					<div class="loading-progress">
+						<div class="spinner"></div>
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: {loadingProgress}%"></div>
+						</div>
+						<span class="loading-text">連合情報を取得中... {loadingProgress}%</span>
+					</div>
 				</div>
 			{:else if filteredServers().length > 0}
 				<div class="graph-container">
@@ -924,6 +943,13 @@
 		background: var(--bg-card);
 	}
 
+	.loading-progress {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+
 	.spinner {
 		width: 40px;
 		height: 40px;
@@ -931,6 +957,20 @@
 		border-top-color: var(--accent-500);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
+	}
+
+	.progress-bar {
+		width: 200px;
+		height: 4px;
+		background: rgba(134, 179, 0, 0.2);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: var(--accent-500);
+		transition: width 0.3s ease;
 	}
 
 	.loading-text {
@@ -962,6 +1002,26 @@
 		background: var(--accent-500);
 		transform: translateY(-1px);
 		box-shadow: 0 4px 12px rgba(134, 179, 0, 0.3);
+	}
+
+	/* タブレット対応（768px - 1024px） */
+	@media (min-width: 769px) and (max-width: 1024px) {
+		.layout {
+			padding: 0.5rem 0.75rem;
+		}
+
+		.sidebar {
+			width: 200px;
+		}
+
+		.graph-legend {
+			font-size: 0.6rem;
+			padding: 0.5rem;
+		}
+
+		.graph-legend .legend-item {
+			gap: 0.25rem;
+		}
 	}
 
 	@media (max-width: 1024px) {

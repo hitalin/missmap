@@ -4,6 +4,15 @@
 	import { getRepositoryColor, blendColors } from '$lib/collector';
 	import { DEFAULT_EDGE_VISIBILITY, type EdgeVisibility } from '$lib/types';
 
+	// Cytoscapeの動的インポートをメモ化（パフォーマンス最適化）
+	let cytoscapePromise: Promise<typeof import('cytoscape').default> | null = null;
+	async function getCytoscape() {
+		if (!cytoscapePromise) {
+			cytoscapePromise = import('cytoscape').then(m => m.default);
+		}
+		return cytoscapePromise;
+	}
+
 	// メディアプロキシ経由でアイコンを取得
 	const MEDIA_PROXY = 'https://media.yami.ski/proxy/image.webp';
 	function proxyIconUrl(url: string | null): string {
@@ -559,7 +568,7 @@
 			return;
 		}
 
-		const cytoscape = (await import('cytoscape')).default;
+		const cytoscape = await getCytoscape();
 
 		// 既知のサーバーホスト
 		const serverHosts = new Set(servers.map((s) => s.host));
@@ -958,7 +967,8 @@
 					return weight * 300;
 				},
 				gravity: 0.15, // 重力を弱めて自然な配置に
-				numIter: 1500, // 2500→1500に削減（パフォーマンス向上）
+				// ノード数に応じてイテレーション数を動的調整（小規模グラフで高速化）
+				numIter: Math.min(1500, Math.max(500, nodes.length * 3)),
 				coolingFactor: 0.96, // 0.97→0.96に変更（早く収束）
 				padding: 80,
 				randomize: false
@@ -1441,28 +1451,28 @@
 
 	<!-- Graph controls overlay -->
 	<div class="graph-controls">
-		<button class="control-btn" onclick={() => cy?.fit()} title="全体表示">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<button class="control-btn" onclick={() => cy?.fit()} title="全体表示" aria-label="グラフ全体を表示">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 1.3)} title="拡大">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 1.3)} title="拡大" aria-label="グラフを拡大">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="11" cy="11" r="8" />
 				<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				<line x1="11" y1="8" x2="11" y2="14" />
 				<line x1="8" y1="11" x2="14" y2="11" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 0.7)} title="縮小">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 0.7)} title="縮小" aria-label="グラフを縮小">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="11" cy="11" r="8" />
 				<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				<line x1="8" y1="11" x2="14" y2="11" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.fit(undefined, 50)} title="全体表示に戻る">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		<button class="control-btn" onclick={() => cy?.fit(undefined, 50)} title="全体表示に戻る" aria-label="グラフを全体表示に戻す">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="12" cy="12" r="10" />
 				<circle cx="12" cy="12" r="3" />
 			</svg>

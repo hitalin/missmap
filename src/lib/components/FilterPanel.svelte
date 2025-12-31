@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { DEFAULT_FILTER, type ServerFilter, type ServerScale, type RegistrationStatus, type EmailRequirement, type AgeRestriction } from '$lib/types';
 
 	let {
@@ -67,6 +69,7 @@
 	</button>
 
 	{#if isExpanded}
+	<div class="panel-content" transition:slide={{ duration: 200, easing: cubicOut }}>
 	<section>
 		<h4>新規登録</h4>
 		<div class="chip-group">
@@ -75,6 +78,8 @@
 					class="filter-chip"
 					class:active={filter.registrationStatus.includes(value)}
 					onclick={() => toggleRegistration(value)}
+					aria-pressed={filter.registrationStatus.includes(value)}
+					aria-label="{label}の新規登録フィルター"
 				>
 					{label}
 				</button>
@@ -90,6 +95,8 @@
 					class="filter-chip"
 					class:active={filter.emailRequirement === value}
 					onclick={() => (filter.emailRequirement = value)}
+					aria-pressed={filter.emailRequirement === value}
+					aria-label="{label}のメールアドレス要件フィルター"
 				>
 					{label}
 				</button>
@@ -105,6 +112,8 @@
 					class="filter-chip"
 					class:active={filter.ageRestriction === value}
 					onclick={() => (filter.ageRestriction = value)}
+					aria-pressed={filter.ageRestriction === value}
+					aria-label="{label}の年齢制限フィルター"
 				>
 					{label}
 				</button>
@@ -120,6 +129,8 @@
 					class="filter-chip"
 					class:active={filter.scale.includes(value)}
 					onclick={() => toggleScale(value)}
+					aria-pressed={filter.scale.includes(value)}
+					aria-label="{label}の規模フィルター"
 				>
 					{label}
 				</button>
@@ -167,6 +178,7 @@
 			</button>
 		</div>
 	</section>
+	</div>
 	{/if}
 </aside>
 
@@ -249,7 +261,7 @@
 		font-size: 0.7rem;
 		color: var(--fg-secondary);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: all var(--transition-fast), transform 0.1s ease;
 	}
 
 	.filter-chip:hover {
@@ -257,10 +269,21 @@
 		box-shadow: var(--shadow-sm);
 	}
 
+	.filter-chip:active {
+		transform: scale(0.95);
+	}
+
 	.filter-chip.active {
 		background: rgba(134, 179, 0, 0.15);
 		border-color: var(--accent-600);
 		color: var(--accent-400);
+		animation: chip-activate 0.3s ease-out;
+	}
+
+	@keyframes chip-activate {
+		0% { transform: scale(1); }
+		50% { transform: scale(1.05); }
+		100% { transform: scale(1); }
 	}
 
 	/* Edge chips - 色付きのアクティブ状態 */

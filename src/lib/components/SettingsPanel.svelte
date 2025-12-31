@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { DEFAULT_SETTINGS, type UserSettings, type ViewpointCriteria } from '$lib/types';
 
 	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
@@ -104,6 +106,7 @@
 	</button>
 
 	{#if isExpanded}
+	<div class="panel-content" transition:slide={{ duration: 200, easing: cubicOut }}>
 	<!-- 選定基準の選択 -->
 	<div class="criteria-selector">
 		<label>デフォルト視点の基準:</label>
@@ -194,6 +197,7 @@
 			{/if}
 		</div>
 	{/if}
+	</div>
 	{/if}
 </div>
 
