@@ -529,9 +529,9 @@
 			const validNewHosts = validResults.slice(0, needed).map(r => r.host);
 			const newFederations = validResults.slice(0, needed).flatMap(r => r.federations);
 
-			// 視点サーバーを更新
+			// 視点サーバーと連合情報をアトミックに更新（グラフ再描画を1回に抑える）
 			const validHosts = [...ssrCandidates, ...validNewHosts].slice(0, 5);
-			settings.viewpointServers = validHosts.length > 0 ? validHosts :
+			const finalHosts = validHosts.length > 0 ? validHosts :
 				calculateTopServers('dru15', data.servers as ServerInfo[], 5);
 
 			// 連合情報をマージ
@@ -539,8 +539,15 @@
 				const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
 				const newFeds = newFederations.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
 				if (newFeds.length > 0) {
+					// 1回のバッチ更新でadditionalFederationsとviewpointServersを同時に変更
+					// これによりFederationGraphの$effectは1回だけトリガーされる
 					additionalFederations = [...additionalFederations, ...newFeds];
+					settings.viewpointServers = finalHosts;
+				} else {
+					settings.viewpointServers = finalHosts;
 				}
+			} else {
+				settings.viewpointServers = finalHosts;
 			}
 		} finally {
 			isLoading = false;

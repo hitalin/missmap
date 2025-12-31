@@ -88,6 +88,7 @@
 	let prevServersLength = 0;
 	let prevFederationsLength = 0;
 	let prevFocusHost = '';
+	let redrawDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// 宇宙空間の慣性パン用の状態
 	let panVelocity = { x: 0, y: 0 };
@@ -316,12 +317,15 @@
 			if (focusHighlightTimeout) {
 				clearTimeout(focusHighlightTimeout);
 			}
+			if (redrawDebounceTimeout) {
+				clearTimeout(redrawDebounceTimeout);
+			}
 			stopInertia();
 			destroyCy();
 		};
 	});
 
-	// サーバー/連合データが変更されたらグラフを再描画
+	// サーバー/連合データが変更されたらグラフを再描画（デバウンス付き）
 	$effect(() => {
 		const serversChanged = servers.length !== prevServersLength;
 		const federationsChanged = federations.length !== prevFederationsLength;
@@ -330,8 +334,16 @@
 			prevServersLength = servers.length;
 			prevFederationsLength = federations.length;
 
-			destroyCy();
-			initGraph();
+			// デバウンス: 連続した変更があった場合は最後の変更のみ反映（ちらつき防止）
+			if (redrawDebounceTimeout) {
+				clearTimeout(redrawDebounceTimeout);
+			}
+
+			redrawDebounceTimeout = setTimeout(() => {
+				destroyCy();
+				initGraph();
+				redrawDebounceTimeout = null;
+			}, 50); // 50ms以内の変更はバッチ化
 		}
 	});
 
@@ -869,7 +881,7 @@
 			layout: {
 				name: 'cose',
 				animate: true,
-				animationDuration: 1500,
+				animationDuration: 1000, // 1.5秒→1秒に短縮
 				nodeRepulsion: () => 50000,
 				idealEdgeLength: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
@@ -886,8 +898,8 @@
 					return weight * 300;
 				},
 				gravity: 0.15, // 重力を弱めて自然な配置に
-				numIter: 2500,
-				coolingFactor: 0.97,
+				numIter: 1500, // 2500→1500に削減（パフォーマンス向上）
+				coolingFactor: 0.96, // 0.97→0.96に変更（早く収束）
 				padding: 80,
 				randomize: false
 			},
