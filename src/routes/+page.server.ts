@@ -266,13 +266,24 @@ export const load: PageServerLoad = async ({ fetch }) => {
 		]);
 		const federations = [...federationsArrays.flat(), ...blockedArrays.flat()];
 
+		// 連合情報が取得できたサーバーのセット
+		const serversWithFederation = new Set<string>();
+		for (const fed of federations) {
+			serversWithFederation.add(fed.sourceHost);
+		}
+
+		// 各基準のトップ候補を連合情報があるものだけにフィルタリング
+		const filteredTopByDru15 = topByDru15.filter(host => serversWithFederation.has(host));
+		const filteredTopByNpd15 = topByNpd15.filter(host => serversWithFederation.has(host));
+		const filteredTopByUsers = topByUsers.filter(host => serversWithFederation.has(host));
+
 		return {
 			servers: japaneseServers,
 			federations,
-			defaultViewpoints: topByDru15.slice(0, 5), // デフォルトはdru15の上位5件
-			topByDru15,
-			topByNpd15,
-			topByUsers
+			defaultViewpoints: filteredTopByDru15.slice(0, 5), // デフォルトはdru15の上位5件
+			topByDru15: filteredTopByDru15,
+			topByNpd15: filteredTopByNpd15,
+			topByUsers: filteredTopByUsers
 		};
 	} catch (e) {
 		console.error('Failed to load servers:', e);
