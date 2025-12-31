@@ -1048,6 +1048,8 @@
 				unhighlightNode(node);
 				selectedNode = null;
 				onSelectServer?.(null, null);
+				// ツールチップも非表示
+				tooltip.visible = false;
 			} else {
 				// 新しいノードをタップ → サーバー情報を表示
 				if (selectedNode) {
@@ -1056,6 +1058,17 @@
 
 				highlightNode(node);
 				selectedNode = node;
+
+				// モバイル: タップ時にツールチップも表示
+				const renderedPos = node.renderedPosition();
+				tooltip = {
+					visible: true,
+					x: renderedPos.x,
+					y: renderedPos.y - node.renderedHeight() / 2 - 8,
+					type: 'node',
+					label: node.data('label'),
+					host: node.id()
+				};
 
 				// サーバー情報を親に通知（位置情報付き）
 				const serverInfo = serverInfoMap.get(host);
@@ -1092,6 +1105,8 @@
 					unhighlightNode(selectedNode);
 					selectedNode = null;
 				}
+				// ツールチップも非表示
+				tooltip.visible = false;
 				onClearSelection?.();
 			}
 		});
@@ -1206,6 +1221,53 @@
 			const edge = evt.target;
 			const sourceId = edge.data('source');
 			const targetId = edge.data('target');
+			const isBlocked = edge.data('isBlocked');
+			const isSuspended = edge.data('isSuspended');
+			const isConnectivity = edge.data('isConnectivity') || false;
+			const isMutual = edge.data('isMutual') || false;
+			const isMutualOk = edge.data('isMutualOk') || false;
+			const forwardOk = edge.data('forwardOk');
+			const backwardOk = edge.data('backwardOk');
+			const forwardError = edge.data('forwardError');
+			const backwardError = edge.data('backwardError');
+
+			// 関係の種類を判定
+			let relation: 'federation' | 'blocked' | 'suspended' | 'connectivity-ok' | 'connectivity-ng' | 'connectivity-partial' = 'federation';
+
+			if (isConnectivity) {
+				if (isMutualOk) {
+					relation = 'connectivity-ok';
+				} else if (forwardOk || backwardOk) {
+					relation = 'connectivity-partial';
+				} else {
+					relation = 'connectivity-ng';
+				}
+			} else if (isSuspended) {
+				relation = 'suspended';
+			} else if (isBlocked) {
+				relation = 'blocked';
+			}
+
+			// モバイル: タップ時にエッジツールチップも表示
+			const sourcePos = cy.getElementById(sourceId).renderedPosition();
+			const targetPos = cy.getElementById(targetId).renderedPosition();
+			const midX = (sourcePos.x + targetPos.x) / 2;
+			const midY = (sourcePos.y + targetPos.y) / 2;
+
+			tooltip = {
+				visible: true,
+				x: midX,
+				y: midY - 10,
+				type: 'edge',
+				source: sourceId,
+				target: targetId,
+				relation,
+				isMutual: isMutual || isMutualOk,
+				forwardOk: isConnectivity ? forwardOk : undefined,
+				backwardOk: isConnectivity ? backwardOk : undefined,
+				forwardError: isConnectivity ? forwardError : undefined,
+				backwardError: isConnectivity ? backwardError : undefined
+			};
 
 			// 前のノード選択を解除
 			if (selectedNode) {
