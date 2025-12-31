@@ -86,7 +86,6 @@
 	let currentFocusedNode: import('cytoscape').NodeSingular | null = null;
 
 	let prevServersLength = 0;
-	let prevFederationsLength = 0;
 	let prevFocusHost = '';
 
 	// 宇宙空間の慣性パン用の状態
@@ -289,8 +288,13 @@
 
 	onMount(() => {
 		prevServersLength = servers.length;
-		prevFederationsLength = federations.length;
 		prevFocusHost = focusHost;
+
+		// 初期化時のハッシュを設定
+		prevFederationHash = federations
+			.map(f => `${f.sourceHost}-${f.targetHost}`)
+			.sort()
+			.join('|');
 
 		// ResizeObserverでコンテナの高さが確定したら初期化
 		const resizeObserver = new ResizeObserver((entries) => {
@@ -321,15 +325,24 @@
 		};
 	});
 
+	// 連合データの内容を表すハッシュを生成（配列の長さだけでなく中身も考慮）
+	let prevFederationHash = '';
+
 	// サーバー/連合データが変更されたらグラフを再描画
 	// viewpointServers変更時はグラフ全体を再描画せず、ハイライトのみ更新
 	$effect(() => {
 		const serversChanged = servers.length !== prevServersLength;
-		const federationsChanged = federations.length !== prevFederationsLength;
+
+		// 連合データの内容ハッシュを生成（sourceHost-targetHostのセットで判定）
+		const currentFederationHash = federations
+			.map(f => `${f.sourceHost}-${f.targetHost}`)
+			.sort()
+			.join('|');
+		const federationsChanged = currentFederationHash !== prevFederationHash;
 
 		if ((serversChanged || federationsChanged) && container) {
 			prevServersLength = servers.length;
-			prevFederationsLength = federations.length;
+			prevFederationHash = currentFederationHash;
 
 			// データ変更時のみ再描画（視点サーバー変更では再描画しない）
 			destroyCy();
@@ -631,6 +644,8 @@
 
 		// まず全ブロック関係をマップに整理
 		const blockRelationMap = new Map<string, {
+			hostA: string;
+			hostB: string;
 			forward: boolean;  // A→B方向
 			backward: boolean; // B→A方向
 			isBlocked: boolean;
@@ -646,9 +661,11 @@
 			const [hostA, hostB] = fed.sourceHost < fed.targetHost
 				? [fed.sourceHost, fed.targetHost]
 				: [fed.targetHost, fed.sourceHost];
-			const key = `${hostA}-${hostB}`;
+			const key = `${hostA}|${hostB}`;
 
 			const existing = blockRelationMap.get(key) || {
+				hostA,
+				hostB,
 				forward: false,
 				backward: false,
 				isBlocked: false,
@@ -669,13 +686,13 @@
 
 		// マップからエッジを生成
 		for (const [key, relation] of blockRelationMap) {
-			const [hostA, hostB] = key.split('-');
+			const { hostA, hostB } = relation;
 			const isMutual = relation.forward && relation.backward;
 			const edgeColor = relation.isSuspended ? '#ffa502' : '#ff4757';
 
 			blockedEdges.push({
 				data: {
-					id: `blocked-${key}`,
+					id: `blk_${key.replace(/\./g, '_')}`,
 					source: relation.forward ? hostA : hostB,
 					target: relation.forward ? hostB : hostA,
 					weight: 3,

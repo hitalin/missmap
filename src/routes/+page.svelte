@@ -427,7 +427,6 @@
 		return Array.from(fedMap.values());
 	});
 
-	// 視点サーバーからの連合情報をフィルター
 	let displayFederations = $derived(() => {
 		return allFederations().filter(f => settings.viewpointServers.includes(f.sourceHost));
 	});
