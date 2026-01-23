@@ -534,6 +534,21 @@
 		}
 	}
 
+	// グラフから視点サーバーをトグル
+	async function handleToggleViewpoint(host: string, add: boolean) {
+		if (add) {
+			// 追加: 既に存在する場合は何もしない
+			if (settings.viewpointServers.includes(host)) return;
+			settings.viewpointServers = [...settings.viewpointServers, host];
+			// 連合情報を取得
+			await handleAddViewpoint(host);
+		} else {
+			// 削除: 最低1つは残す
+			if (settings.viewpointServers.length <= 1) return;
+			settings.viewpointServers = settings.viewpointServers.filter(h => h !== host);
+		}
+	}
+
 	// グラフでサーバーを選択した時のポップアップ表示用
 	let selectedServerInfo = $state<ServerInfo | null>(null);
 	let popupPosition = $state<{ x: number; y: number } | null>(null);
@@ -711,6 +726,7 @@
 							onSelectServer={handleSelectServer}
 							onSelectEdge={handleSelectEdge}
 							onClearSelection={handleClearSelection}
+							onToggleViewpoint={handleToggleViewpoint}
 						/>
 					</div>
 				{:else}
@@ -785,6 +801,7 @@
 						onSelectServer={handleSelectServer}
 						onSelectEdge={handleSelectEdge}
 						onClearSelection={handleClearSelection}
+						onToggleViewpoint={handleToggleViewpoint}
 					/>
 				</div>
 			{:else}
@@ -806,7 +823,13 @@
 </div>
 
 <!-- Server Info Popup -->
-<ServerInfoPopup server={selectedServerInfo} position={popupPosition} onClose={handleClosePopup} />
+<ServerInfoPopup
+	server={selectedServerInfo}
+	position={popupPosition}
+	onClose={handleClosePopup}
+	isViewpoint={selectedServerInfo ? settings.viewpointServers.includes(selectedServerInfo.host) : false}
+	onToggleViewpoint={handleToggleViewpoint}
+/>
 
 <style>
 	.page {

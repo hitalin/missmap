@@ -47,7 +47,8 @@
 		initialSelection = null,
 		onSelectServer,
 		onSelectEdge,
-		onClearSelection
+		onClearSelection,
+		onToggleViewpoint
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
@@ -59,6 +60,7 @@
 		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
 		onSelectEdge?: (sourceHost: string, targetHost: string) => void;
 		onClearSelection?: () => void;
+		onToggleViewpoint?: (host: string, add: boolean) => void;
 	} = $props();
 
 	let container: HTMLDivElement;
@@ -73,6 +75,7 @@
 		// ノード用
 		label?: string;
 		host?: string;
+		isViewpoint?: boolean;
 		// エッジ用
 		source?: string;
 		target?: string;
@@ -1132,7 +1135,8 @@
 					y: renderedPos.y - node.renderedHeight() / 2 - 8,
 					type: 'node',
 					label: node.data('label'),
-					host: node.id()
+					host: node.id(),
+					isViewpoint: node.data('isViewpoint') || false
 				};
 
 				// サーバー情報を親に通知（位置情報付き）
@@ -1190,7 +1194,8 @@
 				y: renderedPos.y - node.renderedHeight() / 2 - 8,
 				type: 'node',
 				label: node.data('label'),
-				host: node.id()
+				host: node.id(),
+				isViewpoint: node.data('isViewpoint') || false
 			};
 		});
 
@@ -1505,8 +1510,35 @@
 			style="left: {tooltip.x}px; top: {tooltip.y}px;"
 		>
 			{#if tooltip.type === 'node'}
-				<span class="tooltip-label">{tooltip.label}</span>
-				<span class="tooltip-host">{tooltip.host}</span>
+				<div class="node-tooltip-content">
+					<div class="node-info">
+						<span class="tooltip-label">{tooltip.label}</span>
+						<span class="tooltip-host">{tooltip.host}</span>
+					</div>
+					{#if onToggleViewpoint && tooltip.host}
+						<button
+							class="viewpoint-toggle"
+							class:active={tooltip.isViewpoint}
+							onclick={(e) => {
+								e.stopPropagation();
+								if (tooltip.host) {
+									onToggleViewpoint(tooltip.host, !tooltip.isViewpoint);
+								}
+							}}
+							title={tooltip.isViewpoint ? '視点サーバーから外す' : '視点サーバーに追加'}
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								{#if tooltip.isViewpoint}
+									<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+									<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+								{:else}
+									<circle cx="12" cy="12" r="3" />
+									<path d="M12 5v.01M17.66 6.34l-.01.01M20 12h.01M17.66 17.66l-.01-.01M12 20v-.01M6.34 17.66l.01-.01M4 12h-.01M6.34 6.34l.01.01" />
+								{/if}
+							</svg>
+						</button>
+					{/if}
+				</div>
 			{:else}
 				<div class="edge-relation">
 					{#if tooltip.relation === 'blocked'}
@@ -1690,7 +1722,7 @@
 		-webkit-backdrop-filter: blur(16px);
 		border: 1px solid rgba(255, 255, 255, 0.12);
 		border-radius: var(--radius-lg);
-		pointer-events: none;
+		pointer-events: auto;
 		z-index: 100;
 		white-space: nowrap;
 		animation: tooltip-fade-in 0.2s var(--ease-out-back);
@@ -1783,6 +1815,63 @@
 		font-size: 0.7rem;
 		color: var(--tooltip-fg-muted);
 		font-weight: 500;
+	}
+
+	/* ノードツールチップ */
+	.node-tooltip-content {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+	}
+
+	.node-info {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.125rem;
+	}
+
+	.viewpoint-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		background: rgba(134, 179, 0, 0.15);
+		border: 1px solid rgba(134, 179, 0, 0.3);
+		border-radius: 50%;
+		color: rgba(134, 179, 0, 0.7);
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out-back);
+		flex-shrink: 0;
+	}
+
+	.viewpoint-toggle svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.viewpoint-toggle:hover {
+		background: rgba(134, 179, 0, 0.25);
+		border-color: rgba(134, 179, 0, 0.5);
+		color: #86b300;
+		transform: scale(1.1);
+		box-shadow: 0 0 12px rgba(134, 179, 0, 0.3);
+	}
+
+	.viewpoint-toggle.active {
+		background: rgba(134, 179, 0, 0.3);
+		border-color: #86b300;
+		color: #86b300;
+		box-shadow: 0 0 8px rgba(134, 179, 0, 0.4);
+	}
+
+	.viewpoint-toggle.active:hover {
+		background: rgba(255, 100, 100, 0.2);
+		border-color: rgba(255, 100, 100, 0.5);
+		color: #fca5a5;
+		box-shadow: 0 0 12px rgba(255, 100, 100, 0.3);
 	}
 
 	/* エッジツールチップの内容 */

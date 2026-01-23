@@ -6,11 +6,15 @@
 	let {
 		server,
 		position,
-		onClose
+		onClose,
+		isViewpoint = false,
+		onToggleViewpoint
 	}: {
 		server: ServerInfo | null;
 		position: { x: number; y: number } | null;
 		onClose: () => void;
+		isViewpoint?: boolean;
+		onToggleViewpoint?: (host: string, add: boolean) => void;
 	} = $props();
 
 	// ポップアップの位置を計算（画面からはみ出さないように調整）
@@ -168,6 +172,29 @@
 					{getRegistrationStatus(server).label}
 				</span>
 			</div>
+
+			<!-- 視点サーバー切り替え -->
+			{#if onToggleViewpoint}
+				<div class="viewpoint-action">
+					<button
+						class="viewpoint-btn"
+						class:active={isViewpoint}
+						onclick={() => onToggleViewpoint(server.host, !isViewpoint)}
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							{#if isViewpoint}
+								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+								<circle cx="12" cy="12" r="3" />
+								<line x1="4" y1="4" x2="20" y2="20" stroke-width="2.5" />
+							{:else}
+								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+								<circle cx="12" cy="12" r="3" />
+							{/if}
+						</svg>
+						{isViewpoint ? '視点から外す' : '視点に追加'}
+					</button>
+				</div>
+			{/if}
 
 			<!-- 説明文（HTMLを展開） -->
 			{#if server.description}
@@ -415,6 +442,53 @@
 		color: var(--accent-400);
 		background: rgba(134, 179, 0, 0.12);
 		border-color: rgba(134, 179, 0, 0.25);
+	}
+
+	/* 視点サーバー切り替え */
+	.viewpoint-action {
+		padding: 0.75rem 0;
+		display: flex;
+		justify-content: center;
+	}
+
+	.viewpoint-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.625rem 1rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--fg-secondary);
+		background: var(--glass-bg);
+		border: 1px solid var(--border-color);
+		border-radius: var(--radius-full);
+		cursor: pointer;
+		transition: all var(--transition-bounce);
+	}
+
+	.viewpoint-btn:hover {
+		background: var(--glass-bg-strong);
+		border-color: var(--accent-500);
+		color: var(--accent-400);
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+	}
+
+	.viewpoint-btn.active {
+		color: var(--accent-400);
+		background: rgba(134, 179, 0, 0.15);
+		border-color: var(--accent-500);
+	}
+
+	.viewpoint-btn.active:hover {
+		background: rgba(248, 113, 113, 0.15);
+		border-color: #f87171;
+		color: #fca5a5;
+	}
+
+	.viewpoint-btn svg {
+		width: 18px;
+		height: 18px;
 	}
 
 	/* 説明文 */
