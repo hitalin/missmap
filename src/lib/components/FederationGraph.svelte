@@ -982,15 +982,28 @@
 
 		// ノードのハイライト関数（宇宙空間のグロー効果）
 		function highlightNode(node: import('cytoscape').NodeSingular) {
-			node.style({
-				'border-width': 4,
-				'border-color': '#fff',
-				'overlay-opacity': 0.15
+			const nodeSize = node.data('size') || 30;
+			// サイズに応じた強調効果
+			node.animate({
+				style: {
+					'border-width': 5,
+					'border-color': '#fff',
+					'overlay-opacity': 0.25,
+					'width': nodeSize * 1.15,
+					'height': nodeSize * 1.15
+				},
+				duration: 200,
+				easing: 'ease-out-cubic'
 			});
-			// 接続エッジをハイライト
-			node.connectedEdges().style({
-				'line-color': 'rgba(255, 255, 255, 0.7)',
-				opacity: 1
+			// 接続エッジをハイライト（パルス効果）
+			node.connectedEdges().animate({
+				style: {
+					'line-color': 'rgba(255, 255, 255, 0.85)',
+					opacity: 1,
+					'width': 'mapData(weight, 1, 30, 3, 35)'
+				},
+				duration: 200,
+				easing: 'ease-out-cubic'
 			});
 		}
 
@@ -998,27 +1011,45 @@
 			const isViewpoint = node.data('isViewpoint');
 			const nodeColor = node.data('color');
 			const borderWidth = node.data('borderWidth');
+			const nodeSize = node.data('size') || 30;
 
 			if (isViewpoint) {
-				node.style({
-					'border-width': 3,
-					'border-color': '#86b300',
-					'border-style': 'solid',
-					'overlay-opacity': 0
+				node.animate({
+					style: {
+						'border-width': 3,
+						'border-color': '#86b300',
+						'border-style': 'solid',
+						'overlay-opacity': 0,
+						'width': nodeSize,
+						'height': nodeSize
+					},
+					duration: 200,
+					easing: 'ease-out-cubic'
 				});
 			} else {
-				node.style({
-					'border-width': borderWidth,
-					'border-color': nodeColor,
-					'border-style': 'solid',
-					'overlay-opacity': 0
+				node.animate({
+					style: {
+						'border-width': borderWidth,
+						'border-color': nodeColor,
+						'border-style': 'solid',
+						'overlay-opacity': 0,
+						'width': nodeSize,
+						'height': nodeSize
+					},
+					duration: 200,
+					easing: 'ease-out-cubic'
 				});
 			}
-			// エッジは元に戻す
-			node.connectedEdges().forEach((edge: { data: (key: string) => string | number; style: (styles: Record<string, unknown>) => void }) => {
-				edge.style({
-					'line-color': edge.data('color'),
-					opacity: edge.data('opacity')
+			// エッジは元に戻す（アニメーション付き）
+			node.connectedEdges().forEach((edge: { data: (key: string) => string | number; animate: (opts: Record<string, unknown>) => void }) => {
+				edge.animate({
+					style: {
+						'line-color': edge.data('color'),
+						opacity: edge.data('opacity'),
+						'width': edge.data('weight')
+					},
+					duration: 200,
+					easing: 'ease-out-cubic'
 				});
 			});
 		}
@@ -1339,7 +1370,14 @@
 		cy.on('layoutstop', () => {
 			// レイアウト完了後は常に全体表示（力学モデルの結果を尊重）
 			if (cy) {
-				cy.fit(undefined, 50);
+				// 少し引いた状態から始めてズームイン（ワープイン効果）
+				const currentZoom = cy.zoom();
+				cy.zoom(currentZoom * 0.5);
+				cy.animate({
+					fit: { eles: cy.elements(), padding: 50 },
+					duration: 800,
+					easing: 'ease-out-cubic'
+				});
 			}
 			// 視点サーバー間の疎通チェックを開始
 			checkViewpointConnectivity();
@@ -1496,15 +1534,36 @@
 
 	<!-- 宇宙空間の星（パララックス効果付き） -->
 	<div class="stars-layer" bind:this={starsLayer} aria-hidden="true">
-		{#each { length: 50 } as _, i}
+		<!-- 通常の星 -->
+		{#each { length: 60 } as _, i}
+			{@const starType = i % 5}
 			<div
 				class="star"
+				class:star-accent={starType === 0}
+				class:star-purple={starType === 1}
+				class:star-bright={starType === 2}
 				style="
 					left: {Math.random() * 100}%;
 					top: {Math.random() * 100}%;
-					--size: {0.5 + Math.random() * 2}px;
-					--delay: {Math.random() * 3}s;
-					--duration: {2 + Math.random() * 3}s;
+					--size: {0.5 + Math.random() * 2.5}px;
+					--delay: {Math.random() * 4}s;
+					--duration: {2 + Math.random() * 4}s;
+				"
+			></div>
+		{/each}
+
+		<!-- 宇宙塵/パーティクル -->
+		{#each { length: 25 } as _, i}
+			<div
+				class="space-dust"
+				style="
+					left: {Math.random() * 100}%;
+					top: {Math.random() * 100}%;
+					--size: {1 + Math.random() * 2}px;
+					--drift-x: {-20 + Math.random() * 40}px;
+					--drift-y: {-20 + Math.random() * 40}px;
+					--delay: {Math.random() * 8}s;
+					--duration: {8 + Math.random() * 6}s;
 				"
 			></div>
 		{/each}
@@ -1513,12 +1572,12 @@
 
 	<!-- Graph controls overlay -->
 	<div class="graph-controls">
-		<button class="control-btn" onclick={() => cy?.fit()} title="全体表示" aria-label="グラフ全体を表示">
+		<button class="control-btn" onclick={() => cy?.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 400, easing: 'ease-out-cubic' })} title="全体表示" aria-label="グラフ全体を表示">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 1.3)} title="拡大" aria-label="グラフを拡大">
+		<button class="control-btn" onclick={() => cy?.animate({ zoom: cy.zoom() * 1.4, duration: 300, easing: 'ease-out-cubic' })} title="拡大" aria-label="グラフを拡大">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="11" cy="11" r="8" />
 				<line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -1526,14 +1585,14 @@
 				<line x1="8" y1="11" x2="14" y2="11" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.zoom(cy.zoom() * 0.7)} title="縮小" aria-label="グラフを縮小">
+		<button class="control-btn" onclick={() => cy?.animate({ zoom: cy.zoom() * 0.65, duration: 300, easing: 'ease-out-cubic' })} title="縮小" aria-label="グラフを縮小">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="11" cy="11" r="8" />
 				<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				<line x1="8" y1="11" x2="14" y2="11" />
 			</svg>
 		</button>
-		<button class="control-btn" onclick={() => cy?.fit(undefined, 50)} title="全体表示に戻る" aria-label="グラフを全体表示に戻す">
+		<button class="control-btn pulse-hint" onclick={() => cy?.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 500, easing: 'ease-out-cubic' })} title="リセット" aria-label="グラフを全体表示に戻す">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 				<circle cx="12" cy="12" r="10" />
 				<circle cx="12" cy="12" r="3" />
@@ -1543,15 +1602,23 @@
 
 	<!-- Legend overlay (左下) -->
 	<div class="graph-legend">
-		<div class="legend-item"><span class="legend-key">色</span><span class="legend-val">ソフトウェア</span></div>
-		<div class="legend-item"><span class="legend-key">大きさ</span><span class="legend-val">ユーザー数</span></div>
-		<div class="legend-item"><span class="legend-key">線の太さ</span><span class="legend-val">やり取り量</span></div>
-		<div class="legend-item"><span class="legend-key">中心</span><span class="legend-val">繋がり多</span></div>
-		<div class="legend-item legend-blocked"><span class="legend-key">赤破線</span><span class="legend-val">ブロック</span></div>
-		<div class="legend-item legend-suspended"><span class="legend-key">橙破線</span><span class="legend-val">配信停止</span></div>
-		<div class="legend-item legend-connectivity-ok"><span class="legend-key">青点線</span><span class="legend-val">疎通OK</span></div>
-		<div class="legend-item legend-connectivity-ng"><span class="legend-key">紫点線</span><span class="legend-val">疎通NG</span></div>
-		<div class="legend-item"><span class="legend-key">🔒</span><span class="legend-val">連合非公開</span></div>
+		<div class="legend-section">
+			<div class="legend-item"><span class="legend-dot node-dot"></span><span class="legend-key">色</span><span class="legend-val">ソフトウェア</span></div>
+			<div class="legend-item"><span class="legend-dot size-dot"></span><span class="legend-key">大きさ</span><span class="legend-val">ユーザー数</span></div>
+			<div class="legend-item"><span class="legend-dot edge-dot"></span><span class="legend-key">線の太さ</span><span class="legend-val">やり取り量</span></div>
+			<div class="legend-item"><span class="legend-dot center-dot"></span><span class="legend-key">中心</span><span class="legend-val">繋がり多</span></div>
+		</div>
+		<div class="legend-divider"></div>
+		<div class="legend-section">
+			<div class="legend-item legend-blocked"><span class="legend-line blocked-line"></span><span class="legend-key">赤破線</span><span class="legend-val">ブロック</span></div>
+			<div class="legend-item legend-suspended"><span class="legend-line suspended-line"></span><span class="legend-key">橙破線</span><span class="legend-val">配信停止</span></div>
+			<div class="legend-item legend-connectivity-ok"><span class="legend-line connectivity-ok-line"></span><span class="legend-key">青点線</span><span class="legend-val">疎通OK</span></div>
+			<div class="legend-item legend-connectivity-ng"><span class="legend-line connectivity-ng-line"></span><span class="legend-key">紫点線</span><span class="legend-val">疎通NG</span></div>
+		</div>
+		<div class="legend-divider"></div>
+		<div class="legend-section">
+			<div class="legend-item"><span class="legend-icon">🔒</span><span class="legend-val">連合非公開</span></div>
+		</div>
 	</div>
 </div>
 
@@ -1561,12 +1628,16 @@
 		flex: 1;
 		min-height: 0;
 		height: 100%;
-		/* 宇宙空間の背景 - DXMテーマ準拠 */
+		/* 宇宙空間の背景 - より深みのあるグラデーション */
 		background:
-			radial-gradient(ellipse at 30% 40%, rgba(163, 116, 255, 0.06) 0%, transparent 50%),
-			radial-gradient(ellipse at 70% 60%, rgba(214, 85, 214, 0.04) 0%, transparent 50%),
-			radial-gradient(ellipse at center, rgba(163, 116, 255, 0.08) 0%, transparent 60%),
-			rgba(19, 14, 38, 1);
+			/* 星雲のような色彩 */
+			radial-gradient(ellipse 80% 50% at 20% 30%, rgba(134, 179, 0, 0.04) 0%, transparent 50%),
+			radial-gradient(ellipse 60% 40% at 75% 70%, rgba(163, 116, 255, 0.06) 0%, transparent 45%),
+			radial-gradient(ellipse 70% 60% at 50% 50%, rgba(214, 85, 214, 0.04) 0%, transparent 50%),
+			/* 中央の微かな光源 */
+			radial-gradient(circle at 50% 50%, rgba(134, 179, 0, 0.03) 0%, transparent 40%),
+			/* ベースグラデーション */
+			linear-gradient(180deg, rgba(12, 8, 24, 1) 0%, rgba(19, 14, 38, 1) 50%, rgba(15, 10, 30, 1) 100%);
 		overflow: hidden;
 		cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>🚀</text></svg>") 4 4, auto;
 	}
@@ -1578,68 +1649,106 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.125rem;
-		padding: 0.375rem 0.625rem;
-		background: rgba(0, 0, 0, 0.85);
-		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		border-radius: var(--radius-md);
+		gap: 0.25rem;
+		padding: 0.5rem 0.75rem;
+		background: rgba(10, 10, 20, 0.9);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: var(--radius-lg);
 		pointer-events: none;
 		z-index: 100;
 		white-space: nowrap;
-		animation: tooltip-fade-in 0.15s ease-out;
+		animation: tooltip-fade-in 0.2s var(--ease-out-back);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 		/* ダークテーマ固定のテキスト色 */
-		--tooltip-fg-primary: #eee;
+		--tooltip-fg-primary: #fff;
 		--tooltip-fg-muted: rgba(255, 255, 255, 0.5);
-		--tooltip-fg-secondary: rgba(255, 255, 255, 0.7);
+		--tooltip-fg-secondary: rgba(255, 255, 255, 0.75);
+	}
+
+	/* ツールチップの三角形インジケーター */
+	.graph-tooltip::after {
+		content: '';
+		position: absolute;
+		bottom: -6px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 0;
+		height: 0;
+		border-left: 6px solid transparent;
+		border-right: 6px solid transparent;
+		border-top: 6px solid rgba(10, 10, 20, 0.9);
 	}
 
 	/* エッジツールチップのスタイル */
 	.graph-tooltip.edge-tooltip {
-		gap: 0.25rem;
-		padding: 0.5rem 0.75rem;
+		gap: 0.375rem;
+		padding: 0.625rem 0.875rem;
 	}
 
 	.graph-tooltip.edge-tooltip.blocked {
-		border-color: rgba(255, 71, 87, 0.5);
-		background: rgba(255, 71, 87, 0.15);
+		border-color: rgba(255, 71, 87, 0.4);
+		background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(10, 10, 20, 0.9));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 71, 87, 0.2);
+	}
+
+	.graph-tooltip.edge-tooltip.blocked::after {
+		border-top-color: rgba(255, 71, 87, 0.3);
 	}
 
 	.graph-tooltip.edge-tooltip.suspended {
-		border-color: rgba(255, 165, 2, 0.5);
-		background: rgba(255, 165, 2, 0.15);
+		border-color: rgba(255, 165, 2, 0.4);
+		background: linear-gradient(135deg, rgba(255, 165, 2, 0.2), rgba(10, 10, 20, 0.9));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 165, 2, 0.2);
+	}
+
+	.graph-tooltip.edge-tooltip.suspended::after {
+		border-top-color: rgba(255, 165, 2, 0.3);
 	}
 
 	.graph-tooltip.edge-tooltip.connectivity-ok {
-		border-color: rgba(0, 217, 255, 0.5);
-		background: rgba(0, 217, 255, 0.15);
+		border-color: rgba(0, 217, 255, 0.4);
+		background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(10, 10, 20, 0.9));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 217, 255, 0.2);
+	}
+
+	.graph-tooltip.edge-tooltip.connectivity-ok::after {
+		border-top-color: rgba(0, 217, 255, 0.3);
 	}
 
 	.graph-tooltip.edge-tooltip.connectivity-ng {
-		border-color: rgba(168, 85, 247, 0.5);
-		background: rgba(168, 85, 247, 0.15);
+		border-color: rgba(168, 85, 247, 0.4);
+		background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(10, 10, 20, 0.9));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(168, 85, 247, 0.2);
+	}
+
+	.graph-tooltip.edge-tooltip.connectivity-ng::after {
+		border-top-color: rgba(168, 85, 247, 0.3);
 	}
 
 	@keyframes tooltip-fade-in {
 		from {
 			opacity: 0;
-			transform: translate(-50%, -90%);
+			transform: translate(-50%, -90%) scale(0.95);
 		}
 		to {
 			opacity: 1;
-			transform: translate(-50%, -100%);
+			transform: translate(-50%, -100%) scale(1);
 		}
 	}
 
 	.tooltip-label {
-		font-size: 0.8rem;
-		font-weight: 600;
+		font-size: 0.85rem;
+		font-weight: 700;
 		color: var(--tooltip-fg-primary);
+		letter-spacing: -0.01em;
 	}
 
 	.tooltip-host {
-		font-size: 0.65rem;
+		font-size: 0.7rem;
 		color: var(--tooltip-fg-muted);
+		font-weight: 500;
 	}
 
 	/* エッジツールチップの内容 */
@@ -1685,8 +1794,13 @@
 
 	/* 片方向疎通（オレンジ） */
 	.graph-tooltip.edge-tooltip.connectivity-partial {
-		border-color: rgba(255, 170, 0, 0.5);
-		background: rgba(255, 170, 0, 0.15);
+		border-color: rgba(255, 170, 0, 0.4);
+		background: linear-gradient(135deg, rgba(255, 170, 0, 0.2), rgba(10, 10, 20, 0.9));
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.2);
+	}
+
+	.graph-tooltip.edge-tooltip.connectivity-partial::after {
+		border-top-color: rgba(255, 170, 0, 0.3);
 	}
 
 	.graph-tooltip.connectivity-partial .relation-text {
@@ -1701,48 +1815,55 @@
 	.connectivity-details {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		margin-top: 0.25rem;
-		padding-top: 0.25rem;
-		border-top: 1px solid var(--border-color);
+		gap: 0.375rem;
+		margin-top: 0.375rem;
+		padding-top: 0.375rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
 	}
 
 	.connectivity-direction {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
-		font-size: 0.65rem;
+		gap: 0.5rem;
+		font-size: 0.7rem;
 	}
 
 	.direction-hosts {
-		color: var(--fg-secondary);
+		color: var(--tooltip-fg-secondary);
 		min-width: 8rem;
+		font-family: ui-monospace, monospace;
+		font-size: 0.65rem;
 	}
 
 	.direction-status {
-		font-weight: 600;
-		padding: 0.0625rem 0.25rem;
-		border-radius: 2px;
+		font-weight: 700;
+		padding: 0.125rem 0.375rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.6rem;
+		letter-spacing: 0.02em;
 	}
 
 	.direction-status.ok {
 		color: #00d9ff;
-		background: rgba(0, 217, 255, 0.15);
+		background: rgba(0, 217, 255, 0.2);
+		box-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
 	}
 
 	.direction-status.ng {
 		color: #c084fc;
-		background: rgba(168, 85, 247, 0.15);
+		background: rgba(168, 85, 247, 0.2);
+		box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
 	}
 
 	.direction-error {
 		font-size: 0.55rem;
-		color: var(--fg-muted);
+		color: var(--tooltip-fg-muted);
+		font-style: italic;
 	}
 
 	.connectivity-error {
 		font-size: 0.6rem;
-		color: var(--fg-muted);
+		color: var(--tooltip-fg-muted);
 		margin-top: 0.125rem;
 	}
 
@@ -1773,7 +1894,9 @@
 	/* 星のレイヤー */
 	.stars-layer {
 		position: absolute;
-		inset: 0;
+		inset: -20%;
+		width: 140%;
+		height: 140%;
 		pointer-events: none;
 		z-index: 0;
 	}
@@ -1784,8 +1907,26 @@
 		height: var(--size);
 		background: white;
 		border-radius: 50%;
-		opacity: 0.6;
+		opacity: 0.5;
 		animation: twinkle var(--duration) ease-in-out var(--delay) infinite;
+		box-shadow: 0 0 calc(var(--size) * 2) rgba(255, 255, 255, 0.3);
+	}
+
+	/* 色のバリエーション */
+	.star.star-accent {
+		background: #86b300;
+		box-shadow: 0 0 calc(var(--size) * 3) rgba(134, 179, 0, 0.5);
+	}
+
+	.star.star-purple {
+		background: #a374ff;
+		box-shadow: 0 0 calc(var(--size) * 3) rgba(163, 116, 255, 0.5);
+	}
+
+	.star.star-bright {
+		background: #fff;
+		box-shadow: 0 0 calc(var(--size) * 4) rgba(255, 255, 255, 0.6);
+		animation: twinkle-bright var(--duration) ease-in-out var(--delay) infinite;
 	}
 
 	@keyframes twinkle {
@@ -1794,8 +1935,40 @@
 			transform: scale(1);
 		}
 		50% {
-			opacity: 0.9;
-			transform: scale(1.2);
+			opacity: 0.7;
+			transform: scale(1.15);
+		}
+	}
+
+	@keyframes twinkle-bright {
+		0%, 100% {
+			opacity: 0.4;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.3);
+		}
+	}
+
+	/* 宇宙塵/パーティクル */
+	.space-dust {
+		position: absolute;
+		width: var(--size);
+		height: var(--size);
+		background: rgba(255, 255, 255, 0.4);
+		border-radius: 50%;
+		animation: drift var(--duration) ease-in-out var(--delay) infinite;
+	}
+
+	@keyframes drift {
+		0%, 100% {
+			opacity: 0.2;
+			transform: translate(0, 0);
+		}
+		50% {
+			opacity: 0.6;
+			transform: translate(var(--drift-x), var(--drift-y));
 		}
 	}
 
@@ -1813,8 +1986,15 @@
 		right: 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.375rem;
 		z-index: 10;
+		padding: 0.375rem;
+		background: rgba(0, 0, 0, 0.35);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-lg);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
 	.control-btn {
@@ -1823,29 +2003,55 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(12px);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.05);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border: 1px solid rgba(255, 255, 255, 0.08);
 		border-radius: var(--radius-md);
-		color: rgba(255, 255, 255, 0.7);
+		color: rgba(255, 255, 255, 0.6);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: all var(--transition-bounce);
 	}
 
 	.control-btn:hover {
-		background: rgba(0, 0, 0, 0.7);
-		border-color: rgba(255, 255, 255, 0.2);
-		color: #eee;
-		transform: scale(1.05);
+		background: rgba(134, 179, 0, 0.2);
+		border-color: rgba(134, 179, 0, 0.4);
+		color: #fff;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 16px rgba(134, 179, 0, 0.25), 0 0 20px rgba(134, 179, 0, 0.15);
 	}
 
 	.control-btn:active {
-		transform: scale(0.95);
+		transform: scale(0.95) translateY(0);
+		box-shadow: none;
 	}
 
 	.control-btn svg {
 		width: 18px;
 		height: 18px;
+		transition: transform var(--transition-bounce);
+	}
+
+	.control-btn:hover svg {
+		transform: scale(1.1);
+	}
+
+	/* リセットボタンの微かなパルス効果 */
+	.control-btn.pulse-hint {
+		animation: pulse-hint 3s ease-in-out infinite;
+	}
+
+	.control-btn.pulse-hint:hover {
+		animation: none;
+	}
+
+	@keyframes pulse-hint {
+		0%, 100% {
+			box-shadow: none;
+		}
+		50% {
+			box-shadow: 0 0 12px rgba(134, 179, 0, 0.3);
+		}
 	}
 
 	/* Legend overlay - 常にダークテーマ（宇宙空間用） */
@@ -1855,32 +2061,106 @@
 		left: 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.5rem 0.625rem;
-		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-md);
+		gap: 0.5rem;
+		padding: 0.625rem 0.75rem;
+		background: rgba(0, 0, 0, 0.4);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-lg);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 		z-index: 10;
 		/* ダークテーマ固定のテキスト色 */
 		--legend-fg-muted: rgba(255, 255, 255, 0.5);
-		--legend-fg-secondary: rgba(255, 255, 255, 0.7);
+		--legend-fg-secondary: rgba(255, 255, 255, 0.75);
+	}
+
+	.legend-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.legend-divider {
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+		margin: 0.125rem 0;
 	}
 
 	.legend-item {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 0.5rem;
 		font-size: 0.65rem;
+	}
+
+	.legend-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.legend-dot.node-dot {
+		background: linear-gradient(135deg, #86b300, #a374ff, #d655d6);
+		box-shadow: 0 0 6px rgba(134, 179, 0, 0.5);
+	}
+
+	.legend-dot.size-dot {
+		background: rgba(255, 255, 255, 0.6);
+		box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+	}
+
+	.legend-dot.edge-dot {
+		width: 12px;
+		height: 3px;
+		border-radius: 2px;
+		background: linear-gradient(90deg, #86b300, #a374ff);
+	}
+
+	.legend-dot.center-dot {
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent);
+		box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+	}
+
+	.legend-line {
+		width: 16px;
+		height: 2px;
+		flex-shrink: 0;
+		border-radius: 1px;
+	}
+
+	.legend-line.blocked-line {
+		background: repeating-linear-gradient(90deg, #ff4757, #ff4757 4px, transparent 4px, transparent 6px);
+	}
+
+	.legend-line.suspended-line {
+		background: repeating-linear-gradient(90deg, #ffa502, #ffa502 4px, transparent 4px, transparent 6px);
+	}
+
+	.legend-line.connectivity-ok-line {
+		background: repeating-linear-gradient(90deg, #00d9ff, #00d9ff 2px, transparent 2px, transparent 4px);
+	}
+
+	.legend-line.connectivity-ng-line {
+		background: repeating-linear-gradient(90deg, #a855f7, #a855f7 2px, transparent 2px, transparent 4px);
+	}
+
+	.legend-icon {
+		font-size: 0.75rem;
+		width: 16px;
+		text-align: center;
 	}
 
 	.legend-key {
 		color: var(--legend-fg-muted);
-		min-width: 3.5rem;
+		min-width: 3rem;
+		font-weight: 500;
 	}
 
 	.legend-val {
 		color: var(--legend-fg-secondary);
+		font-weight: 500;
 	}
 
 	.legend-blocked .legend-key {
@@ -1919,6 +2199,8 @@
 		.graph-controls {
 			top: 0.75rem;
 			right: 0.75rem;
+			padding: 0.25rem;
+			gap: 0.25rem;
 		}
 
 		.control-btn {
@@ -1934,15 +2216,53 @@
 		.graph-legend {
 			bottom: 0.5rem;
 			left: 0.5rem;
-			padding: 0.375rem 0.5rem;
+			padding: 0.5rem 0.625rem;
+			gap: 0.375rem;
+		}
+
+		.legend-section {
+			gap: 0.1875rem;
 		}
 
 		.legend-item {
 			font-size: 0.6rem;
+			gap: 0.375rem;
 		}
 
 		.legend-key {
-			min-width: 3rem;
+			min-width: 2.5rem;
+		}
+
+		.legend-dot {
+			width: 6px;
+			height: 6px;
+		}
+
+		.legend-dot.edge-dot {
+			width: 10px;
+			height: 2px;
+		}
+
+		.legend-line {
+			width: 12px;
+		}
+
+		.legend-icon {
+			font-size: 0.65rem;
+			width: 12px;
+		}
+
+		/* モバイルではツールチップをより目立たせる */
+		.graph-tooltip {
+			padding: 0.625rem 0.875rem;
+		}
+
+		.tooltip-label {
+			font-size: 0.9rem;
+		}
+
+		.tooltip-host {
+			font-size: 0.75rem;
 		}
 	}
 </style>
