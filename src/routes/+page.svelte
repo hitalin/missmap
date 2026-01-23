@@ -726,7 +726,6 @@
 							onSelectServer={handleSelectServer}
 							onSelectEdge={handleSelectEdge}
 							onClearSelection={handleClearSelection}
-							onToggleViewpoint={handleToggleViewpoint}
 						/>
 					</div>
 				{:else}
@@ -801,7 +800,6 @@
 						onSelectServer={handleSelectServer}
 						onSelectEdge={handleSelectEdge}
 						onClearSelection={handleClearSelection}
-						onToggleViewpoint={handleToggleViewpoint}
 					/>
 				</div>
 			{:else}
