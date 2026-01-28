@@ -974,38 +974,55 @@
 			layout: {
 				name: 'cose',
 				animate: true,
-				animationDuration: 1000,
+				animationDuration: 1200,
 				animationEasing: 'ease-out-cubic',
 				// ランダム初期配置
 				randomize: true,
 				// パディング
 				padding: 50,
-				// ノードサイズに応じた反発力（fcose版を参考に調整）
+
+				// === クラスタリング極限調整 ===
+
+				// ノード反発力（最大化してクラスタ分離を強化）
 				nodeRepulsion: (node: { data: (key: string) => number }) => {
 					const size = node.data('size') || 30;
-					// 大きいノードほど強く反発（クラスタ分離を促進）
-					return 50000 + (size / 70) * 80000;
+					// 基底値を大幅増加、サイズ依存も強化
+					return 80000 + (size / 70) * 120000;
 				},
-				// エッジの理想的な長さ（fcose版の非線形スケールを適用）
+
+				// エッジの理想的な長さ（より極端な非線形スケール）
 				idealEdgeLength: (edge: { data: (key: string) => number }) => {
 					const weight = edge.data('weight') || 1;
-					// weight: 1-30 → normalized: 0-1
 					const normalized = Math.min(1, (weight - 1) / 29);
-					// 非線形スケール: 強い関係をより近くに（fcose版と同じ曲線）
-					const curve = Math.pow(normalized, 0.4);
-					// length: 250-20（強い関係は非常に近く）
-					return 250 - curve * 230;
+					// より急峻な曲線（0.3乗）で強い関係を極端に近くする
+					const curve = Math.pow(normalized, 0.3);
+					// length: 300-15（レンジを拡大、強い関係は極近接）
+					return 300 - curve * 285;
 				},
-				// 重力設定（fcose版に合わせて弱めに→クラスタが広がる）
-				gravity: 0.15,
-				// イテレーション数（収束精度を上げる）
-				numIter: 1500,
+
+				// 重力（弱めてクラスタの自然な広がりを許容）
+				gravity: 0.12,
+
+				// === 焼きなまし法パラメータ（収束品質向上） ===
+
+				// 初期温度（高いほど初期探索が広範囲）
+				initialTemp: 2000,
+				// 冷却係数（1に近いほどゆっくり冷却→より良い解）
+				coolingFactor: 0.995,
+				// 最小温度（低いほど長く計算→精度向上）
+				minTemp: 0.1,
+
+				// イテレーション数（大幅増加）
+				numIter: 2500,
+
 				// フィット設定
 				fit: true,
-				// ノード重複を避ける
-				nodeOverlap: 20,
-				// 分離コンポーネント間の距離
-				componentSpacing: 100
+				// ノード重複回避（強化）
+				nodeOverlap: 30,
+				// 分離コンポーネント間の距離（拡大）
+				componentSpacing: 120,
+				// ネスト係数（クラスタ内密度）
+				nestingFactor: 1.2
 			},
 			// インタラクティブ設定
 			minZoom: 0.3,
