@@ -15,7 +15,10 @@ async function isMisskeyInstance(host: string): Promise<{ isMisskey: boolean; er
 
 		const res = await fetch(`https://${host}/api/meta`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+			},
 			body: JSON.stringify({}),
 			signal: controller.signal
 		});
@@ -81,7 +84,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			// アプリを新規登録
 			const appRes = await fetch(`https://${host}/api/app/create`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'User-Agent': 'missmap/1.0 (Fediverse Map)'
+				},
 				body: JSON.stringify({
 					name: APP_NAME,
 					description: APP_DESCRIPTION,
@@ -107,7 +113,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// 認証セッションを生成
 		const sessionRes = await fetch(`https://${host}/api/auth/session/generate`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+			},
 			body: JSON.stringify({ appSecret })
 		});
 

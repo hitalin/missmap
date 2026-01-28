@@ -48,7 +48,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// ユーザーキーを取得
 		const userKeyRes = await fetch(`https://${host}/api/auth/session/userkey`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {
+				'Content-Type': 'application/json',
+				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+			},
 			body: JSON.stringify({ appSecret, token })
 		});
 
