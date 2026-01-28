@@ -7,6 +7,7 @@
 	import ServerInfoPopup from '$lib/components/ServerInfoPopup.svelte';
 	import SearchPanel from '$lib/components/SearchPanel.svelte';
 	import FederatedSoftwarePanel from '$lib/components/FederatedSoftwarePanel.svelte';
+	import LoginModal from '$lib/components/LoginModal.svelte';
 	import {
 		DEFAULT_FILTER,
 		DEFAULT_SETTINGS,
@@ -23,6 +24,7 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { getAuthState, initAuth } from '$lib/stores/auth.svelte';
 
 	// リポジトリURLの短縮形マッピング
 	const REPO_SHORTCUTS: Record<string, string> = {
@@ -271,6 +273,10 @@
 	let privateServers = $state<Set<string>>(new Set()); // 連合情報を公開していないサーバー
 	let initialized = $state(false);
 	let focusHost = $state(''); // グラフ上でフォーカスするホスト（一時的）
+
+	// 認証関連
+	let authState = $derived(getAuthState());
+	let showLoginModal = $state(false);
 	// 選択状態（URL連動）: サーバーの場合は "host.example"、エッジの場合は "hostA..hostB"
 	let selectedItem = $state<{ type: 'node' | 'edge'; value: string } | null>(null);
 
@@ -340,6 +346,9 @@
 		if (browser && !initialized) {
 			initialized = true;
 
+			// 認証状態を初期化
+			initAuth();
+
 			// URLクエリパラメータを優先して読み込み
 			const urlParams = new URLSearchParams(window.location.search);
 			const queryFilter = parseFilterFromQuery(urlParams);
@@ -405,6 +414,33 @@
 						}
 					});
 				}
+			}
+		}
+	});
+
+	// 認証状態が変わった時に自動で視点サーバーを追加
+	$effect(() => {
+		if (browser && initialized && authState.isLoggedIn && authState.user) {
+			const userHost = authState.user.host;
+			// 視点サーバーに追加されていなければ追加
+			if (!settings.viewpointServers.includes(userHost)) {
+				settings.viewpointServers = [userHost, ...settings.viewpointServers];
+			}
+
+			// プライベートサーバーだった場合、認証付きで再取得
+			if (privateServers.has(userHost)) {
+				fetchSeedFederations(userHost, false).then((feds) => {
+					if (feds.length > 0) {
+						const existingKeys = new Set(additionalFederations.map(f => `${f.sourceHost}-${f.targetHost}`));
+						const newFeds = feds.filter(f => !existingKeys.has(`${f.sourceHost}-${f.targetHost}`));
+						if (newFeds.length > 0) {
+							additionalFederations = [...additionalFederations, ...newFeds];
+						}
+					}
+				});
+			} else {
+				// 連合情報を取得
+				handleAddViewpoint(userHost);
 			}
 		}
 	});
@@ -478,7 +514,15 @@
 				return [];
 			}
 
-			const result = (await res.json()) as { federations: FederationInfo[] };
+			const result = (await res.json()) as { federations: FederationInfo[]; authenticated?: boolean };
+
+			// 認証付きで取得成功した場合、プライベートサーバーのマークを解除
+			if (result.authenticated && privateServers.has(seedHost)) {
+				const newPrivateServers = new Set(privateServers);
+				newPrivateServers.delete(seedHost);
+				privateServers = newPrivateServers;
+			}
+
 			return result.federations;
 		} catch {
 			if (showError) {
@@ -584,6 +628,15 @@
 		popupPosition = null;
 	}
 
+	// 認証関連ハンドラー
+	function handleOpenLogin() {
+		showLoginModal = true;
+	}
+
+	function handleCloseLogin() {
+		showLoginModal = false;
+	}
+
 	// 表示するサーバー一覧（SSRで取得したデータを使用）
 	let displayServers = $derived(() => {
 		return data.servers as ServerInfo[];
@@ -674,7 +727,7 @@
 	{#if isMobile}
 		<div class="mobile-scroll-container">
 			<div class="mobile-panels">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} {authState} onOpenLogin={handleOpenLogin} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
@@ -750,7 +803,7 @@
 		<!-- デスクトップ: サイドバー -->
 		{#if !isMobile}
 			<aside class="sidebar">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {authState} onOpenLogin={handleOpenLogin} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
@@ -828,6 +881,9 @@
 	isViewpoint={selectedServerInfo ? settings.viewpointServers.includes(selectedServerInfo.host) : false}
 	onToggleViewpoint={handleToggleViewpoint}
 />
+
+<!-- Login Modal -->
+<LoginModal isOpen={showLoginModal} onClose={handleCloseLogin} />
 
 <style>
 	.page {
@@ -1241,4 +1297,5 @@
 			animation: octocat-wave 560ms ease-in-out;
 		}
 	}
+
 </style>

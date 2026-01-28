@@ -65,3 +65,34 @@ export const DEFAULT_SETTINGS: UserSettings = {
 	viewpointServers: ['misskey.io'],
 	viewpointCriteria: 'dru15'
 };
+
+// ========== 認証関連 ==========
+
+// MiAuth セッション
+export interface MiAuthSession {
+	token: string;
+	url: string;
+}
+
+// ログイン中のユーザー情報
+export interface AuthUser {
+	host: string;
+	username: string;
+	displayName?: string;
+	avatarUrl?: string;
+}
+
+// 認証状態
+export interface AuthState {
+	isLoggedIn: boolean;
+	user: AuthUser | null;
+	isLoading: boolean;
+}
+
+// 永続化するユーザー設定
+export interface PersistedSettings {
+	viewpointServers: string[];
+	viewpointCriteria: ViewpointCriteria;
+	edgeVisibility: EdgeVisibility;
+	bookmarks: string[];
+}

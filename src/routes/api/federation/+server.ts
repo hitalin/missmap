@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { parseSession, deleteAppSecret } from '$lib/auth';
 
 interface FederationInstance {
 	host: string;
@@ -9,9 +10,22 @@ interface FederationInstance {
 	isSuspended?: boolean;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
 	const body = (await request.json()) as { seedServer?: string };
 	const { seedServer } = body;
+
+	// セッションから認証情報を取得
+	const session = parseSession(cookies.get('missmap_session'));
+	// ユーザーが自分のサーバーにリクエストする場合のみトークンを使用（大文字小文字無視）
+	const authToken =
+		session && session.host.toLowerCase() === seedServer?.toLowerCase()
+			? session.token
+			: null;
+
+	// デバッグログ
+	console.log('[Federation API] seedServer:', seedServer);
+	console.log('[Federation API] session host:', session?.host);
+	console.log('[Federation API] authToken exists:', !!authToken);
 
 	if (!seedServer || typeof seedServer !== 'string') {
 		return json({ error: 'seedServer is required' }, { status: 400 });
@@ -25,25 +39,53 @@ export const POST: RequestHandler = async ({ request }) => {
 		const maxFetches = 10; // 最大10回 = 300件
 
 		for (let i = 0; i < maxFetches; i++) {
+			// 認証トークンがある場合は含める
+			const requestBody = authToken
+				? { i: authToken, limit, offset, sort: '+pubSub' }
+				: { limit, offset, sort: '+pubSub' };
+
 			const res = await fetch(`https://${seedServer}/api/federation/instances`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ limit, offset, sort: '+pubSub' })
+				body: JSON.stringify(requestBody)
 			});
 
 			if (!res.ok) {
 				const errorText = await res.text();
-				let errorData: { error?: { code?: string } } = {};
+				let errorData: { error?: { code?: string; message?: string } } = {};
 				try {
 					errorData = JSON.parse(errorText);
 				} catch {
 					// ignore parse error
 				}
+
+				// デバッグログ
+				console.log('[Federation API] Error response:', res.status, errorData);
+				console.log('[Federation API] Was authenticated:', !!authToken);
+
 				if (errorData?.error?.code === 'CREDENTIAL_REQUIRED') {
+					// 認証トークンを送ったのにまだCREDENTIAL_REQUIREDなら、権限不足
+					const message = authToken
+						? `${seedServer} の連合情報を閲覧する権限がありません（管理者権限が必要な場合があります）`
+						: `${seedServer} は連合情報を公開していません（認証が必要）`;
 					return json(
 						{
 							error: 'CREDENTIAL_REQUIRED',
-							message: `${seedServer} は連合情報を公開していません（認証が必要）`
+							message,
+							authenticated: !!authToken
+						},
+						{ status: 403 }
+					);
+				}
+
+				if (errorData?.error?.code === 'PERMISSION_DENIED') {
+					// アプリの権限不足 → キャッシュをクリアして再認証を促す
+					deleteAppSecret(seedServer);
+					return json(
+						{
+							error: 'PERMISSION_DENIED',
+							message: `アプリの権限が不足しています。一度ログアウトして再度ログインしてください。`,
+							authenticated: !!authToken
 						},
 						{ status: 403 }
 					);
@@ -94,10 +136,15 @@ export const POST: RequestHandler = async ({ request }) => {
 		}> = [];
 
 		try {
+			// ブロック情報も認証トークンがあれば含める
+			const blockedRequestBody = authToken
+				? { i: authToken, limit: 30, blocked: true }
+				: { limit: 30, blocked: true };
+
 			const blockedRes = await fetch(`https://${seedServer}/api/federation/instances`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ limit: 30, blocked: true })
+				body: JSON.stringify(blockedRequestBody)
 			});
 
 			if (blockedRes.ok) {
@@ -115,7 +162,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			// ブロック情報取得に失敗しても続行
 		}
 
-		return json({ federations: [...normalFederations, ...blockedFederations] });
+		return json({
+			federations: [...normalFederations, ...blockedFederations],
+			authenticated: !!authToken // 認証付きで取得したかどうか
+		});
 	} catch (e) {
 		console.error(`Failed to fetch federations from ${seedServer}:`, e);
 		return json(

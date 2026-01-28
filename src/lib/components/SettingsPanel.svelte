@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { DEFAULT_SETTINGS, type UserSettings, type ViewpointCriteria } from '$lib/types';
+	import { DEFAULT_SETTINGS, type UserSettings, type ViewpointCriteria, type AuthState } from '$lib/types';
+	import { logout } from '$lib/stores/auth.svelte';
 
-	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true }: {
+	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true, authState, onOpenLogin }: {
 		settings: UserSettings;
 		onAddViewpoint: (host: string) => void;
 		onFocusViewpoint?: (host: string) => void;
@@ -12,7 +13,13 @@
 		defaultViewpoints: string[];
 		isMobile?: boolean;
 		defaultOpen?: boolean;
+		authState?: AuthState;
+		onOpenLogin?: () => void;
 	} = $props();
+
+	async function handleLogout() {
+		await logout();
+	}
 
 	let isExpanded = $state(defaultOpen);
 
@@ -107,6 +114,42 @@
 
 	{#if isExpanded}
 	<div class="panel-content" transition:slide={{ duration: 200, easing: cubicOut }}>
+	<!-- ログインセクション（上部） -->
+	{#if authState}
+		<div class="auth-section-top">
+			{#if authState.isLoading}
+				<div class="auth-loading">
+					<div class="spinner"></div>
+				</div>
+			{:else if authState.isLoggedIn && authState.user}
+				<div class="user-bar">
+					{#if authState.user.avatarUrl}
+						<img src={authState.user.avatarUrl} alt="" class="avatar-small" />
+					{:else}
+						<span class="avatar-placeholder-small">👤</span>
+					{/if}
+					<span class="user-name">@{authState.user.username}@{authState.user.host}</span>
+					<button class="icon-btn logout" onclick={handleLogout} title="ログアウト">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+							<polyline points="16 17 21 12 16 7" />
+							<line x1="21" y1="12" x2="9" y2="12" />
+						</svg>
+					</button>
+				</div>
+			{:else}
+				<button class="login-btn-compact" onclick={onOpenLogin}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+						<polyline points="10 17 15 12 10 7" />
+						<line x1="15" y1="12" x2="3" y2="12" />
+					</svg>
+					ログインして自分の視点を設定
+				</button>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- 選定基準の選択 -->
 	<div class="criteria-selector">
 		<label>デフォルト視点の基準:</label>
@@ -197,6 +240,7 @@
 			{/if}
 		</div>
 	{/if}
+
 	</div>
 	{/if}
 </div>
@@ -561,5 +605,128 @@
 		border-color: rgba(255, 100, 100, 0.3);
 		color: #fca5a5;
 		transform: scale(1.05);
+	}
+
+	/* Auth Section (Top) */
+	.auth-section-top {
+		margin-bottom: 0.75rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	.auth-loading {
+		display: flex;
+		justify-content: center;
+		padding: 0.375rem;
+	}
+
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border: 2px solid rgba(255, 255, 255, 0.2);
+		border-top-color: var(--accent-500);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.user-bar {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.avatar-small {
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		object-fit: cover;
+		border: 1.5px solid var(--accent-500);
+		box-shadow: 0 0 6px rgba(134, 179, 0, 0.3);
+	}
+
+	.avatar-placeholder-small {
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--glass-bg-subtle);
+		border-radius: 50%;
+		font-size: 12px;
+	}
+
+	.user-name {
+		flex: 1;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--fg-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.icon-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		color: var(--fg-muted);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.icon-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.icon-btn:hover {
+		background: rgba(134, 179, 0, 0.1);
+		border-color: var(--accent-500);
+		color: var(--accent-400);
+	}
+
+	.icon-btn.logout:hover {
+		background: rgba(255, 100, 100, 0.1);
+		border-color: rgba(255, 100, 100, 0.3);
+		color: #fca5a5;
+	}
+
+	.login-btn-compact {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		background: rgba(134, 179, 0, 0.1);
+		border: 1px dashed var(--accent-500);
+		border-radius: var(--radius-md);
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: var(--accent-400);
+		cursor: pointer;
+		transition: all var(--transition-bounce);
+	}
+
+	.login-btn-compact svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.login-btn-compact:hover {
+		background: rgba(134, 179, 0, 0.18);
+		border-style: solid;
+		transform: translateY(-1px);
+		box-shadow: 0 0 12px rgba(134, 179, 0, 0.2);
 	}
 </style>
