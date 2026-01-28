@@ -5,17 +5,22 @@
 	import { logout } from '$lib/stores/auth.svelte';
 	import { browser } from '$app/environment';
 
-	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true, authState, onOpenLogin }: {
+	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, onRemoveBookmark, onShareToMisskey, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true, authState, onOpenLogin, isSharing = false, shareError = null, shareSuccess = null }: {
 		settings: UserSettings;
 		onAddViewpoint: (host: string) => void;
 		onFocusViewpoint?: (host: string) => void;
 		onCriteriaChange?: (criteria: ViewpointCriteria) => void;
+		onRemoveBookmark?: (host: string) => void;
+		onShareToMisskey?: () => void;
 		ssrViewpoints: string[];
 		defaultViewpoints: string[];
 		isMobile?: boolean;
 		defaultOpen?: boolean;
 		authState?: AuthState;
 		onOpenLogin?: () => void;
+		isSharing?: boolean;
+		shareError?: string | null;
+		shareSuccess?: { message: string } | null;
 	} = $props();
 
 	async function handleLogout() {
@@ -162,14 +167,53 @@
 							<span class="user-host">@{authState.user.host}</span>
 						</div>
 					</div>
-					<button class="logout-btn" onclick={handleLogout} title="ログアウト">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-							<polyline points="16 17 21 12 16 7" />
-							<line x1="21" y1="12" x2="9" y2="12" />
-						</svg>
-					</button>
+					<div class="user-actions">
+						{#if onShareToMisskey}
+							<button
+								class="post-btn"
+								class:loading={isSharing}
+								onclick={onShareToMisskey}
+								disabled={isSharing}
+								title="このマップをMisskeyに投稿"
+							>
+								{#if isSharing}
+									<div class="btn-spinner"></div>
+								{:else}
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M12 20h9" />
+										<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+									</svg>
+									<span>ノート</span>
+								{/if}
+							</button>
+						{/if}
+						<button class="logout-btn" onclick={handleLogout} title="ログアウト">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+								<polyline points="16 17 21 12 16 7" />
+								<line x1="21" y1="12" x2="9" y2="12" />
+							</svg>
+						</button>
+					</div>
 				</div>
+				{#if shareSuccess}
+					<div class="share-status success">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<polyline points="20 6 9 17 4 12" />
+						</svg>
+						<span>{shareSuccess.message}</span>
+					</div>
+				{/if}
+				{#if shareError}
+					<div class="share-status error">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<line x1="15" y1="9" x2="9" y2="15" />
+							<line x1="9" y1="9" x2="15" y2="15" />
+						</svg>
+						<span>{shareError}</span>
+					</div>
+				{/if}
 			{:else}
 				<button class="login-btn-compact" onclick={onOpenLogin}>
 					<div class="login-icon">
@@ -289,6 +333,33 @@
 					{/if}
 				</svg>
 			</button>
+		</div>
+	{/if}
+
+	<!-- お気に入りサーバー -->
+	{#if settings.bookmarks && settings.bookmarks.length > 0}
+		<div class="bookmarks-section">
+			<div class="bookmarks-header">
+				<svg class="bookmark-icon" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+				</svg>
+				<span>お気に入り</span>
+			</div>
+			<div class="bookmark-chips">
+				{#each settings.bookmarks as host (host)}
+					<div class="bookmark-chip">
+						<button class="chip-main" onclick={() => handleFocus(host)} title="グラフ上でフォーカス">
+							{host}
+						</button>
+						<button class="chip-remove" onclick={() => onRemoveBookmark?.(host)} title="お気に入りから削除">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<line x1="18" y1="6" x2="6" y2="18" />
+								<line x1="6" y1="6" x2="18" y2="18" />
+							</svg>
+						</button>
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 
@@ -823,6 +894,58 @@
 		color: #fca5a5;
 	}
 
+	/* User Actions (post + logout) */
+	.user-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		flex-shrink: 0;
+	}
+
+	.post-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.375rem 0.625rem;
+		background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
+		border: none;
+		border-radius: var(--radius-sm);
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: white;
+		cursor: pointer;
+		transition: all var(--transition-bounce);
+		box-shadow: 0 2px 8px rgba(134, 179, 0, 0.25);
+	}
+
+	.post-btn svg {
+		width: 12px;
+		height: 12px;
+	}
+
+	.post-btn:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(134, 179, 0, 0.35);
+	}
+
+	.post-btn:active {
+		transform: translateY(0);
+	}
+
+	.post-btn.loading {
+		opacity: 0.7;
+		pointer-events: none;
+	}
+
+	.post-btn .btn-spinner {
+		width: 12px;
+		height: 12px;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
 	/* Login Button (logged out state) */
 	.login-btn-compact {
 		width: 100%;
@@ -879,5 +1002,152 @@
 		font-size: 0.65rem;
 		color: var(--fg-muted);
 		line-height: 1.2;
+	}
+
+	/* Bookmarks Section */
+	.bookmarks-section {
+		margin-top: 0.75rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.bookmarks-header {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.bookmark-icon {
+		width: 14px;
+		height: 14px;
+		color: #ffd700;
+		filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.3));
+	}
+
+	.bookmarks-header span {
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: var(--fg-secondary);
+		letter-spacing: 0.02em;
+	}
+
+	.bookmark-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+	}
+
+	.bookmark-chip {
+		display: inline-flex;
+		align-items: center;
+		background: rgba(255, 215, 0, 0.08);
+		border: 1px solid rgba(255, 215, 0, 0.3);
+		border-radius: var(--radius-full);
+		overflow: hidden;
+		transition: all var(--transition-bounce);
+		box-shadow: var(--shadow-xs);
+	}
+
+	.bookmark-chip:hover {
+		border-color: #ffd700;
+		box-shadow: var(--shadow-sm), 0 0 8px rgba(255, 215, 0, 0.2);
+		transform: translateY(-1px);
+	}
+
+	.bookmark-chip .chip-main {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.625rem;
+		background: transparent;
+		border: none;
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: var(--fg-secondary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.bookmark-chip .chip-main:hover {
+		color: #ffd700;
+	}
+
+	.bookmark-chip .chip-remove {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		margin-right: 0.25rem;
+		background: transparent;
+		border: none;
+		border-radius: 50%;
+		color: var(--fg-muted);
+		cursor: pointer;
+		transition: all var(--transition-bounce);
+	}
+
+	.bookmark-chip .chip-remove svg {
+		width: 10px;
+		height: 10px;
+	}
+
+	.bookmark-chip .chip-remove:hover {
+		background: rgba(255, 100, 100, 0.18);
+		color: #fca5a5;
+		transform: scale(1.1);
+	}
+
+	/* Share Status Messages */
+	.share-status {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		margin-top: 0.5rem;
+		padding: 0.5rem 0.625rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.7rem;
+		animation: fadeIn 0.2s ease-out;
+	}
+
+	.share-status svg {
+		width: 12px;
+		height: 12px;
+		flex-shrink: 0;
+	}
+
+	.share-status.success {
+		background: rgba(134, 179, 0, 0.12);
+		border: 1px solid rgba(134, 179, 0, 0.3);
+		color: var(--accent-400);
+	}
+
+	.share-status.success a {
+		color: var(--accent-400);
+		text-decoration: underline;
+		margin-left: auto;
+	}
+
+	.share-status.success a:hover {
+		color: var(--accent-300);
+	}
+
+	.share-status.error {
+		background: rgba(255, 100, 100, 0.12);
+		border: 1px solid rgba(255, 100, 100, 0.3);
+		color: #fca5a5;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 </style>

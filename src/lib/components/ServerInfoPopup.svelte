@@ -8,15 +8,21 @@
 		position,
 		onClose,
 		isViewpoint = false,
+		isBookmarked = false,
 		onToggleViewpoint,
-		viewpointServers = []
+		onToggleBookmark,
+		viewpointServers = [],
+		federatedCount = 0
 	}: {
 		server: ServerInfo | null;
 		position: { x: number; y: number } | null;
 		onClose: () => void;
 		isViewpoint?: boolean;
+		isBookmarked?: boolean;
 		onToggleViewpoint?: (host: string, add: boolean) => void;
+		onToggleBookmark?: (host: string, add: boolean) => void;
 		viewpointServers?: string[];
+		federatedCount?: number;
 	} = $props();
 
 	// 共有用URLを生成
@@ -201,10 +207,10 @@
 					<span class="stat-value">{formatNumber(server.notesCount)}</span>
 					<span class="stat-label">ノート</span>
 				</div>
-				{#if server.dru15}
+				{#if federatedCount > 0}
 					<div class="stat highlight">
-						<span class="stat-value">{formatNumber(server.dru15)}</span>
-						<span class="stat-label">日次閲覧</span>
+						<span class="stat-value">{formatNumber(federatedCount)}</span>
+						<span class="stat-label">連合</span>
 					</div>
 				{/if}
 			</div>
@@ -242,6 +248,18 @@
 							{/if}
 						</svg>
 						<span>{isViewpoint ? '視点から外す' : '視点に追加'}</span>
+					</button>
+				{/if}
+				{#if onToggleBookmark}
+					<button
+						class="action-btn bookmark-btn"
+						class:active={isBookmarked}
+						onclick={() => onToggleBookmark(server.host, !isBookmarked)}
+						title={isBookmarked ? 'お気に入りから外す' : 'お気に入りに追加'}
+					>
+						<svg viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2">
+							<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+						</svg>
 					</button>
 				{/if}
 				<button
@@ -590,6 +608,22 @@
 		color: var(--accent-400);
 		background: rgba(134, 179, 0, 0.15);
 		border-color: var(--accent-500);
+	}
+
+	.bookmark-btn {
+		padding: 0.5rem;
+	}
+
+	.bookmark-btn.active {
+		color: #fbbf24;
+		background: rgba(251, 191, 36, 0.15);
+		border-color: #fbbf24;
+	}
+
+	.bookmark-btn.active:hover {
+		background: rgba(248, 113, 113, 0.15);
+		border-color: #f87171;
+		color: #fca5a5;
 	}
 
 	/* 説明文 */

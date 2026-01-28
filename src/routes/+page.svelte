@@ -391,7 +391,8 @@
 						// viewModeは廃止されたので、viewpointServersのみ使用
 						settings = {
 						viewpointServers: parsed.viewpointServers,
-						viewpointCriteria: parsed.viewpointCriteria || 'dru15'
+						viewpointCriteria: parsed.viewpointCriteria || 'dru15',
+						bookmarks: parsed.bookmarks || []
 					};
 					} catch {
 						// ignore
@@ -593,6 +594,116 @@
 		}
 	}
 
+	// お気に入りサーバーをトグル
+	function handleToggleBookmark(host: string, add: boolean) {
+		if (add) {
+			if (!settings.bookmarks.includes(host)) {
+				settings.bookmarks = [...settings.bookmarks, host];
+			}
+		} else {
+			settings.bookmarks = settings.bookmarks.filter(h => h !== host);
+		}
+	}
+
+	// お気に入りから削除（SettingsPanel用）
+	function handleRemoveBookmark(host: string) {
+		settings.bookmarks = settings.bookmarks.filter(h => h !== host);
+	}
+
+	// グラフ画像エクスポート機能
+	let exportGraphFn = $state<(() => string | null) | null>(null);
+
+	function handleGraphReady(exportFn: () => string | null) {
+		exportGraphFn = exportFn;
+	}
+
+	// Misskeyへ共有（投稿画面を開く）
+	let isSharing = $state(false);
+	let shareError = $state<string | null>(null);
+	let shareSuccess = $state<{ message: string } | null>(null);
+
+	async function handleShareToMisskey() {
+		if (!authState.isLoggedIn || !authState.user || !exportGraphFn) {
+			shareError = 'ログインが必要です';
+			return;
+		}
+
+		isSharing = true;
+		shareError = null;
+		shareSuccess = null;
+
+		try {
+			// グラフを画像としてエクスポート
+			const imageBase64 = exportGraphFn();
+
+			// 共有テキストを作成
+			const shareUrl = browser ? window.location.href : '';
+			const viewpointText = settings.viewpointServers.length > 0
+				? `視点: ${settings.viewpointServers.join(', ')}`
+				: '';
+			const text = `🗺️ Missmap - Fediverse連合マップ\n\n${viewpointText}\n\n${shareUrl}\n\n#Missmap #Fediverse`;
+
+			// 画像をドライブにアップロード
+			const res = await fetch('/api/share', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					imageBase64,
+					uploadOnly: true
+				})
+			});
+
+			let fileIds: string[] = [];
+			if (res.ok) {
+				const result = await res.json();
+				if (result.fileId) {
+					fileIds = [result.fileId];
+				}
+			}
+
+			// Misskeyの投稿画面を開く
+			const host = authState.user.host;
+			const shareParams = new URLSearchParams();
+			shareParams.set('text', text);
+			if (fileIds.length > 0) {
+				shareParams.set('fileIds', fileIds.join(','));
+			}
+
+			const composeUrl = `https://${host}/share?${shareParams.toString()}`;
+			window.open(composeUrl, '_blank', 'noopener,noreferrer');
+
+			shareSuccess = { message: '投稿画面を開きました' };
+			setTimeout(() => {
+				shareSuccess = null;
+			}, 3000);
+		} catch (error) {
+			shareError = error instanceof Error ? error.message : '共有に失敗しました';
+			setTimeout(() => {
+				shareError = null;
+			}, 5000);
+		} finally {
+			isSharing = false;
+		}
+	}
+
+	// サーバーの連合サーバー数を計算
+	function getFederatedCount(host: string): number {
+		const federations = displayFederations();
+		const connectedHosts = new Set<string>();
+
+		for (const fed of federations) {
+			// このサーバーがsourceまたはtargetの場合、相手側をカウント
+			if (fed.sourceHost === host) {
+				connectedHosts.add(fed.targetHost);
+			}
+			if (fed.targetHost === host) {
+				connectedHosts.add(fed.sourceHost);
+			}
+		}
+
+		return connectedHosts.size;
+	}
+
 	// グラフでサーバーを選択した時のポップアップ表示用
 	let selectedServerInfo = $state<ServerInfo | null>(null);
 	let popupPosition = $state<{ x: number; y: number } | null>(null);
@@ -727,7 +838,7 @@
 	{#if isMobile}
 		<div class="mobile-scroll-container">
 			<div class="mobile-panels">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} {authState} onOpenLogin={handleOpenLogin} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} onRemoveBookmark={handleRemoveBookmark} onShareToMisskey={handleShareToMisskey} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {isMobile} defaultOpen={false} {authState} onOpenLogin={handleOpenLogin} {isSharing} {shareError} {shareSuccess} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
@@ -780,6 +891,7 @@
 							onSelectServer={handleSelectServer}
 							onSelectEdge={handleSelectEdge}
 							onClearSelection={handleClearSelection}
+							onReady={handleGraphReady}
 						/>
 					</div>
 				{:else}
@@ -804,7 +916,7 @@
 		<!-- デスクトップ: サイドバー -->
 		{#if !isMobile}
 			<aside class="sidebar">
-				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {authState} onOpenLogin={handleOpenLogin} />
+				<SettingsPanel bind:settings onAddViewpoint={handleAddViewpoint} onFocusViewpoint={handleFocusViewpoint} onCriteriaChange={handleCriteriaChange} onRemoveBookmark={handleRemoveBookmark} onShareToMisskey={handleShareToMisskey} ssrViewpoints={ssrViewpoints()} defaultViewpoints={defaultViewpoints()} {authState} onOpenLogin={handleOpenLogin} {isSharing} {shareError} {shareSuccess} />
 				<SearchPanel
 					servers={filteredServers()}
 					onFocusServer={handleFocusViewpoint}
@@ -855,6 +967,7 @@
 						onSelectServer={handleSelectServer}
 						onSelectEdge={handleSelectEdge}
 						onClearSelection={handleClearSelection}
+						onReady={handleGraphReady}
 					/>
 				</div>
 			{:else}
@@ -881,8 +994,11 @@
 	position={popupPosition}
 	onClose={handleClosePopup}
 	isViewpoint={selectedServerInfo ? settings.viewpointServers.includes(selectedServerInfo.host) : false}
+	isBookmarked={selectedServerInfo ? settings.bookmarks.includes(selectedServerInfo.host) : false}
 	onToggleViewpoint={handleToggleViewpoint}
+	onToggleBookmark={handleToggleBookmark}
 	viewpointServers={settings.viewpointServers}
+	federatedCount={selectedServerInfo ? getFederatedCount(selectedServerInfo.host) : 0}
 />
 
 <!-- Login Modal -->

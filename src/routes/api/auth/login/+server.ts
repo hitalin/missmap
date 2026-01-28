@@ -5,7 +5,7 @@ import { getAppSecret, setAppSecret, deleteAppSecret } from '$lib/auth';
 
 const APP_NAME = 'missmap';
 const APP_DESCRIPTION = 'Fediverse連合マップ - あなたの宇宙を探索しよう';
-const PERMISSIONS = ['read:account', 'read:federation'];
+const PERMISSIONS = ['read:account', 'read:federation', 'write:notes', 'write:drive'];
 
 // インスタンスがMisskey系かどうかを確認
 async function isMisskeyInstance(host: string): Promise<{ isMisskey: boolean; error?: string }> {

@@ -40,7 +40,8 @@
 		initialSelection = null,
 		onSelectServer,
 		onSelectEdge,
-		onClearSelection
+		onClearSelection,
+		onReady
 	}: {
 		servers: ServerInfo[];
 		federations: Federation[];
@@ -53,7 +54,26 @@
 		onSelectServer?: (server: ServerInfo | null, position: { x: number; y: number } | null) => void;
 		onSelectEdge?: (sourceHost: string, targetHost: string) => void;
 		onClearSelection?: () => void;
+		onReady?: (exportFn: () => string | null) => void;
 	} = $props();
+
+	// グラフをPNG画像としてエクスポート
+	function exportGraphImage(): string | null {
+		if (!cy) return null;
+		try {
+			return cy.png({
+				output: 'base64uri',
+				bg: '#0a0a0f',
+				full: false, // 現在のビューをエクスポート
+				scale: 2,   // 高解像度
+				maxWidth: 2000,
+				maxHeight: 2000
+			});
+		} catch (error) {
+			console.error('Failed to export graph image:', error);
+			return null;
+		}
+	}
 
 	let container: HTMLDivElement;
 	let cy = $state<import('cytoscape').Core | null>(null);
@@ -1467,6 +1487,9 @@
 					duration: 400,
 					easing: 'ease-out-cubic'
 				});
+
+				// グラフが準備完了したことを通知（エクスポート機能を渡す）
+				onReady?.(exportGraphImage);
 			}
 			// 視点サーバー間の疎通チェックを開始
 			checkViewpointConnectivity();

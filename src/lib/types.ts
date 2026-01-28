@@ -59,11 +59,13 @@ export type ViewpointCriteria = 'dru15' | 'npd15' | 'users';
 export interface UserSettings {
 	viewpointServers: string[]; // 視点サーバーのリスト
 	viewpointCriteria: ViewpointCriteria; // デフォルト視点の選定基準
+	bookmarks: string[]; // お気に入りサーバーのリスト
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
 	viewpointServers: ['misskey.io'],
-	viewpointCriteria: 'dru15'
+	viewpointCriteria: 'dru15',
+	bookmarks: []
 };
 
 // ========== 認証関連 ==========
