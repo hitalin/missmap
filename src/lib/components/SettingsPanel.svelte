@@ -120,16 +120,27 @@
 			{#if authState.isLoading}
 				<div class="auth-loading">
 					<div class="spinner"></div>
+					<span class="loading-text">認証中...</span>
 				</div>
 			{:else if authState.isLoggedIn && authState.user}
-				<div class="user-bar">
-					{#if authState.user.avatarUrl}
-						<img src={authState.user.avatarUrl} alt="" class="avatar-small" />
-					{:else}
-						<span class="avatar-placeholder-small">👤</span>
-					{/if}
-					<span class="user-name">@{authState.user.username}@{authState.user.host}</span>
-					<button class="icon-btn logout" onclick={handleLogout} title="ログアウト">
+				<div class="user-card">
+					<div class="user-info">
+						{#if authState.user.avatarUrl}
+							<img src={authState.user.avatarUrl} alt="" class="avatar-small" />
+						{:else}
+							<div class="avatar-placeholder-small">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="8" r="4" />
+									<path d="M20 21a8 8 0 1 0-16 0" />
+								</svg>
+							</div>
+						{/if}
+						<div class="user-details">
+							<span class="user-handle">@{authState.user.username}</span>
+							<span class="user-host">@{authState.user.host}</span>
+						</div>
+					</div>
+					<button class="logout-btn" onclick={handleLogout} title="ログアウト">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
 							<polyline points="16 17 21 12 16 7" />
@@ -139,12 +150,17 @@
 				</div>
 			{:else}
 				<button class="login-btn-compact" onclick={onOpenLogin}>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-						<polyline points="10 17 15 12 10 7" />
-						<line x1="15" y1="12" x2="3" y2="12" />
-					</svg>
-					ログインして自分の視点を設定
+					<div class="login-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+							<polyline points="10 17 15 12 10 7" />
+							<line x1="15" y1="12" x2="3" y2="12" />
+						</svg>
+					</div>
+					<div class="login-text">
+						<span class="login-title">ログイン</span>
+						<span class="login-subtitle">自分の視点を設定</span>
+					</div>
 				</button>
 			{/if}
 		</div>
@@ -616,14 +632,22 @@
 
 	.auth-loading {
 		display: flex;
+		align-items: center;
 		justify-content: center;
-		padding: 0.375rem;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		color: var(--fg-muted);
+		font-size: 0.75rem;
+	}
+
+	.loading-text {
+		color: var(--fg-muted);
 	}
 
 	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid rgba(255, 255, 255, 0.2);
+		width: 16px;
+		height: 16px;
+		border: 2px solid rgba(255, 255, 255, 0.15);
 		border-top-color: var(--accent-500);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
@@ -633,100 +657,162 @@
 		to { transform: rotate(360deg); }
 	}
 
-	.user-bar {
+	/* User Card (logged in state) */
+	.user-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem;
+		background: linear-gradient(135deg, rgba(134, 179, 0, 0.08), rgba(134, 179, 0, 0.03));
+		border: 1px solid rgba(134, 179, 0, 0.15);
+		border-radius: var(--radius-md);
+		transition: all var(--transition-fast);
+	}
+
+	.user-card:hover {
+		border-color: rgba(134, 179, 0, 0.25);
+		box-shadow: 0 0 12px rgba(134, 179, 0, 0.1);
+	}
+
+	.user-info {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		min-width: 0;
+		flex: 1;
 	}
 
 	.avatar-small {
-		width: 24px;
-		height: 24px;
+		width: 28px;
+		height: 28px;
 		border-radius: 50%;
 		object-fit: cover;
-		border: 1.5px solid var(--accent-500);
-		box-shadow: 0 0 6px rgba(134, 179, 0, 0.3);
+		border: 2px solid var(--accent-500);
+		box-shadow: 0 0 8px rgba(134, 179, 0, 0.3);
+		flex-shrink: 0;
 	}
 
 	.avatar-placeholder-small {
-		width: 24px;
-		height: 24px;
+		width: 28px;
+		height: 28px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--glass-bg-subtle);
+		background: linear-gradient(135deg, var(--accent-600), var(--accent-500));
 		border-radius: 50%;
-		font-size: 12px;
+		flex-shrink: 0;
 	}
 
-	.user-name {
-		flex: 1;
+	.avatar-placeholder-small svg {
+		width: 16px;
+		height: 16px;
+		color: white;
+	}
+
+	.user-details {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.user-handle {
 		font-size: 0.75rem;
-		font-weight: 500;
+		font-weight: 600;
 		color: var(--fg-primary);
+		line-height: 1.2;
+	}
+
+	.user-host {
+		font-size: 0.65rem;
+		color: var(--fg-muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		line-height: 1.2;
 	}
 
-	.icon-btn {
+	.logout-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 26px;
-		height: 26px;
+		width: 28px;
+		height: 28px;
 		padding: 0;
-		background: transparent;
-		border: 1px solid transparent;
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-sm);
 		color: var(--fg-muted);
 		cursor: pointer;
 		transition: all var(--transition-fast);
+		flex-shrink: 0;
 	}
 
-	.icon-btn svg {
+	.logout-btn svg {
 		width: 14px;
 		height: 14px;
 	}
 
-	.icon-btn:hover {
-		background: rgba(134, 179, 0, 0.1);
-		border-color: var(--accent-500);
-		color: var(--accent-400);
-	}
-
-	.icon-btn.logout:hover {
-		background: rgba(255, 100, 100, 0.1);
+	.logout-btn:hover {
+		background: rgba(255, 100, 100, 0.15);
 		border-color: rgba(255, 100, 100, 0.3);
 		color: #fca5a5;
 	}
 
+	/* Login Button (logged out state) */
 	.login-btn-compact {
 		width: 100%;
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.5rem 0.75rem;
-		background: rgba(134, 179, 0, 0.1);
-		border: 1px dashed var(--accent-500);
+		gap: 0.625rem;
+		padding: 0.625rem 0.75rem;
+		background: linear-gradient(135deg, rgba(134, 179, 0, 0.12), rgba(134, 179, 0, 0.06));
+		border: 1px dashed rgba(134, 179, 0, 0.4);
 		border-radius: var(--radius-md);
-		font-size: 0.7rem;
-		font-weight: 500;
-		color: var(--accent-400);
 		cursor: pointer;
 		transition: all var(--transition-bounce);
 	}
 
-	.login-btn-compact svg {
-		width: 14px;
-		height: 14px;
+	.login-btn-compact:hover {
+		background: linear-gradient(135deg, rgba(134, 179, 0, 0.18), rgba(134, 179, 0, 0.1));
+		border-style: solid;
+		border-color: var(--accent-500);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(134, 179, 0, 0.15);
 	}
 
-	.login-btn-compact:hover {
-		background: rgba(134, 179, 0, 0.18);
-		border-style: solid;
-		transform: translateY(-1px);
-		box-shadow: 0 0 12px rgba(134, 179, 0, 0.2);
+	.login-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		background: linear-gradient(135deg, var(--accent-500), var(--accent-600));
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.login-icon svg {
+		width: 14px;
+		height: 14px;
+		color: white;
+	}
+
+	.login-text {
+		display: flex;
+		flex-direction: column;
+		text-align: left;
+	}
+
+	.login-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--accent-400);
+		line-height: 1.2;
+	}
+
+	.login-subtitle {
+		font-size: 0.65rem;
+		color: var(--fg-muted);
+		line-height: 1.2;
 	}
 </style>
