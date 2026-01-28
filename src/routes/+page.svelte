@@ -286,20 +286,20 @@
 	// SSRで事前計算されたトップ候補を取得
 	function getPrecomputedTopServers(criteria: import('$lib/types').ViewpointCriteria): string[] {
 		if (criteria === 'dru15' && (data.topByDru15 as string[] | undefined)) {
-			return (data.topByDru15 as string[]).slice(0, 5);
+			return (data.topByDru15 as string[]).slice(0, 3);
 		}
 		if (criteria === 'npd15' && (data.topByNpd15 as string[] | undefined)) {
-			return (data.topByNpd15 as string[]).slice(0, 5);
+			return (data.topByNpd15 as string[]).slice(0, 3);
 		}
 		if (criteria === 'users' && (data.topByUsers as string[] | undefined)) {
-			return (data.topByUsers as string[]).slice(0, 5);
+			return (data.topByUsers as string[]).slice(0, 3);
 		}
 		// フォールバック: SSRデータがない場合のみクライアント側で計算
-		return calculateTopServers(criteria, data.servers as ServerInfo[], 5);
+		return calculateTopServers(criteria, data.servers as ServerInfo[], 3);
 	}
 
 	// 各指標ごとのトップサーバーを計算（フォールバック用）
-	function calculateTopServers(criteria: import('$lib/types').ViewpointCriteria, servers: ServerInfo[], count: number = 5): string[] {
+	function calculateTopServers(criteria: import('$lib/types').ViewpointCriteria, servers: ServerInfo[], count: number = 3): string[] {
 		const sorted = servers.filter(s => {
 			if (criteria === 'dru15') return (s.dru15 ?? 0) > 0;
 			if (criteria === 'npd15') return (s.npd15 ?? 0) > 0;
