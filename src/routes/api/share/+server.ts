@@ -30,6 +30,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			const extension = mimeType === 'image/png' ? 'png' : 'jpg';
 			const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
 
+			console.log('Image upload: mimeType=', mimeType, 'base64Length=', base64Data.length);
+
 			// base64をバイナリに変換（Cloudflare Workers互換）
 			let bytes: Uint8Array;
 			try {
@@ -38,35 +40,42 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				for (let i = 0; i < binaryString.length; i++) {
 					bytes[i] = binaryString.charCodeAt(i);
 				}
+				console.log('Decoded bytes length:', bytes.length);
 			} catch (decodeError) {
 				console.error('Base64 decode failed:', decodeError);
 				return json({ error: 'Invalid image data' }, { status: 400 });
 			}
 
 			// Misskeyのドライブにアップロード
-			// CF Workers互換: Uint8ArrayからBlobを直接作成
-			const blob = new Blob([bytes as BlobPart], { type: mimeType });
+			// CF Workers互換: Uint8ArrayからFileを作成
+			const fileName = `missmap-${Date.now()}.${extension}`;
+			const file = new File([bytes as BlobPart], fileName, { type: mimeType });
 			const formData = new FormData();
 			formData.append('i', token);
-			formData.append('file', blob, `missmap.${extension}`);
-			formData.append('name', `missmap-${Date.now()}.${extension}`);
+			formData.append('file', file);
+			formData.append('name', fileName);
 			formData.append('comment', 'Missmap Federation Graph');
+
+			console.log('Uploading to:', `https://${host}/api/drive/files/create`);
 
 			const uploadRes = await fetch(`https://${host}/api/drive/files/create`, {
 				method: 'POST',
 				body: formData
 			});
 
+			console.log('Upload response status:', uploadRes.status);
+
 			if (!uploadRes.ok) {
 				const errorText = await uploadRes.text();
-				console.error('Drive upload failed:', errorText);
+				console.error('Drive upload failed:', uploadRes.status, errorText);
 				// アップロード失敗しても続行（画像なしで共有）
 				if (uploadOnly) {
-					return json({ error: 'Failed to upload image' }, { status: 500 });
+					return json({ error: `Failed to upload image: ${errorText}` }, { status: 500 });
 				}
 			} else {
 				const uploadData = await uploadRes.json();
 				fileId = uploadData.id;
+				console.log('Upload success, fileId:', fileId);
 			}
 		}
 
