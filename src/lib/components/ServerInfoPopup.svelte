@@ -8,14 +8,50 @@
 		position,
 		onClose,
 		isViewpoint = false,
-		onToggleViewpoint
+		onToggleViewpoint,
+		viewpointServers = []
 	}: {
 		server: ServerInfo | null;
 		position: { x: number; y: number } | null;
 		onClose: () => void;
 		isViewpoint?: boolean;
 		onToggleViewpoint?: (host: string, add: boolean) => void;
+		viewpointServers?: string[];
 	} = $props();
+
+	// 共有用URLを生成
+	function getShareUrl(): string {
+		if (!server || !browser) return '';
+		const url = new URL(window.location.origin);
+		// 現在の視点サーバーを維持しつつ、選択サーバーを追加
+		for (const vp of viewpointServers) {
+			url.searchParams.append('from', vp);
+		}
+		url.searchParams.set('select', server.host);
+		url.searchParams.set('focus', server.host);
+		return url.toString();
+	}
+
+	// URLをクリップボードにコピー
+	let copied = $state(false);
+	async function copyShareUrl() {
+		const url = getShareUrl();
+		try {
+			await navigator.clipboard.writeText(url);
+			copied = true;
+			setTimeout(() => copied = false, 2000);
+		} catch {
+			// フォールバック: 古いブラウザ用
+			const textarea = document.createElement('textarea');
+			textarea.value = url;
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textarea);
+			copied = true;
+			setTimeout(() => copied = false, 2000);
+		}
+	}
 
 	// ポップアップの位置を計算（画面からはみ出さないように調整）
 	let popupStyle = $derived(() => {
@@ -145,7 +181,14 @@
 			<!-- サーバー名 -->
 			<div class="server-title">
 				<h3>{server.name ?? server.host}</h3>
-				<span class="server-host">{server.host}</span>
+				<a href="https://{server.host}" target="_blank" rel="noopener noreferrer" class="server-host-link">
+					{server.host}
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+						<polyline points="15 3 21 3 21 9" />
+						<line x1="10" y1="14" x2="21" y2="3" />
+					</svg>
+				</a>
 			</div>
 
 			<!-- 統計 -->
@@ -158,6 +201,12 @@
 					<span class="stat-value">{formatNumber(server.notesCount)}</span>
 					<span class="stat-label">ノート</span>
 				</div>
+				{#if server.dru15}
+					<div class="stat highlight">
+						<span class="stat-value">{formatNumber(server.dru15)}</span>
+						<span class="stat-label">日次閲覧</span>
+					</div>
+				{/if}
 			</div>
 
 			<!-- ソフトウェア & 登録状況 -->
@@ -173,13 +222,14 @@
 				</span>
 			</div>
 
-			<!-- 視点サーバー切り替え -->
-			{#if onToggleViewpoint}
-				<div class="viewpoint-action">
+			<!-- アクションボタン -->
+			<div class="action-buttons">
+				{#if onToggleViewpoint}
 					<button
-						class="viewpoint-btn"
+						class="action-btn viewpoint-btn"
 						class:active={isViewpoint}
 						onclick={() => onToggleViewpoint(server.host, !isViewpoint)}
+						title={isViewpoint ? '視点から外す' : '視点に追加'}
 					>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							{#if isViewpoint}
@@ -191,10 +241,27 @@
 								<circle cx="12" cy="12" r="3" />
 							{/if}
 						</svg>
-						{isViewpoint ? '視点から外す' : '視点に追加'}
+						<span>{isViewpoint ? '視点から外す' : '視点に追加'}</span>
 					</button>
-				</div>
-			{/if}
+				{/if}
+				<button
+					class="action-btn share-btn"
+					class:copied
+					onclick={copyShareUrl}
+					title="このサーバーへのリンクをコピー"
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						{#if copied}
+							<polyline points="20 6 9 17 4 12" />
+						{:else}
+							<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+							<polyline points="16 6 12 2 8 6" />
+							<line x1="12" y1="2" x2="12" y2="15" />
+						{/if}
+					</svg>
+					<span>{copied ? 'コピー済み!' : '共有'}</span>
+				</button>
+			</div>
 
 			<!-- 説明文（HTMLを展開） -->
 			{#if server.description}
@@ -358,10 +425,29 @@
 		letter-spacing: -0.02em;
 	}
 
-	.server-host {
+	.server-host-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
 		font-size: 0.7rem;
 		color: var(--fg-muted);
 		font-weight: 500;
+		text-decoration: none;
+		transition: all var(--transition-fast);
+	}
+
+	.server-host-link:hover {
+		color: var(--accent-400);
+	}
+
+	.server-host-link svg {
+		width: 12px;
+		height: 12px;
+		opacity: 0.6;
+	}
+
+	.server-host-link:hover svg {
+		opacity: 1;
 	}
 
 	/* 統計 */
@@ -395,6 +481,14 @@
 		color: var(--fg-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
+	}
+
+	.stat.highlight .stat-value {
+		color: var(--accent-400);
+	}
+
+	.stat.highlight .stat-label {
+		color: var(--accent-500);
 	}
 
 	/* メタ情報行 */
@@ -444,19 +538,20 @@
 		border-color: rgba(134, 179, 0, 0.25);
 	}
 
-	/* 視点サーバー切り替え */
-	.viewpoint-action {
-		padding: 0.75rem 0;
+	/* アクションボタン */
+	.action-buttons {
 		display: flex;
+		gap: 0.5rem;
+		padding: 0.75rem 0;
 		justify-content: center;
 	}
 
-	.viewpoint-btn {
+	.action-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.625rem 1rem;
-		font-size: 0.8rem;
+		gap: 0.375rem;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.75rem;
 		font-weight: 600;
 		color: var(--fg-secondary);
 		background: var(--glass-bg);
@@ -466,12 +561,17 @@
 		transition: all var(--transition-bounce);
 	}
 
-	.viewpoint-btn:hover {
+	.action-btn:hover {
 		background: var(--glass-bg-strong);
 		border-color: var(--accent-500);
 		color: var(--accent-400);
 		transform: translateY(-1px);
 		box-shadow: var(--shadow-md);
+	}
+
+	.action-btn svg {
+		width: 16px;
+		height: 16px;
 	}
 
 	.viewpoint-btn.active {
@@ -486,9 +586,10 @@
 		color: #fca5a5;
 	}
 
-	.viewpoint-btn svg {
-		width: 18px;
-		height: 18px;
+	.share-btn.copied {
+		color: var(--accent-400);
+		background: rgba(134, 179, 0, 0.15);
+		border-color: var(--accent-500);
 	}
 
 	/* 説明文 */

@@ -3,6 +3,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { DEFAULT_SETTINGS, type UserSettings, type ViewpointCriteria, type AuthState } from '$lib/types';
 	import { logout } from '$lib/stores/auth.svelte';
+	import { browser } from '$app/environment';
 
 	let { settings = $bindable(DEFAULT_SETTINGS), onAddViewpoint, onFocusViewpoint, onCriteriaChange, ssrViewpoints = [], defaultViewpoints = [], isMobile = false, defaultOpen = true, authState, onOpenLogin }: {
 		settings: UserSettings;
@@ -25,6 +26,27 @@
 
 	let inputValue = $state('');
 	let isAdding = $state(false);
+
+	// URL共有機能
+	let urlCopied = $state(false);
+	async function copyCurrentUrl() {
+		if (!browser) return;
+		try {
+			await navigator.clipboard.writeText(window.location.href);
+			urlCopied = true;
+			setTimeout(() => urlCopied = false, 2000);
+		} catch {
+			// フォールバック
+			const textarea = document.createElement('textarea');
+			textarea.value = window.location.href;
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textarea);
+			urlCopied = true;
+			setTimeout(() => urlCopied = false, 2000);
+		}
+	}
 
 	function handleAdd() {
 		const host = inputValue.trim().toLowerCase();
@@ -241,23 +263,33 @@
 		</div>
 	{:else}
 		<div class="action-buttons">
-			<button class="add-viewpoint-btn" onclick={() => isAdding = true}>
+			<button class="add-viewpoint-btn" onclick={() => isAdding = true} title="視点サーバーを追加">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<circle cx="12" cy="12" r="10" />
 					<line x1="12" y1="8" x2="12" y2="16" />
 					<line x1="8" y1="12" x2="16" y2="12" />
 				</svg>
-				サーバーを追加
+				<span class="btn-label">追加</span>
 			</button>
 			{#if !isDefault()}
-				<button class="reset-btn" onclick={handleResetToDefault} title="デフォルトに戻す">
+				<button class="icon-btn reset-btn" onclick={handleResetToDefault} title="デフォルトに戻す">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
 						<path d="M3 3v5h5" />
 					</svg>
-					リセット
 				</button>
 			{/if}
+			<button class="icon-btn share-url-btn" class:copied={urlCopied} onclick={copyCurrentUrl} title={urlCopied ? 'コピー済み!' : 'マップURLをコピー'}>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					{#if urlCopied}
+						<polyline points="20 6 9 17 4 12" />
+					{:else}
+						<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+						<polyline points="16 6 12 2 8 6" />
+						<line x1="12" y1="2" x2="12" y2="15" />
+					{/if}
+				</svg>
+			</button>
 		</div>
 	{/if}
 
@@ -453,7 +485,8 @@
 	/* Action buttons */
 	.action-buttons {
 		display: flex;
-		gap: 0.375rem;
+		gap: 0.25rem;
+		align-items: center;
 	}
 
 	.add-viewpoint-btn {
@@ -461,12 +494,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.375rem;
-		padding: 0.5rem;
+		gap: 0.25rem;
+		padding: 0.375rem 0.5rem;
 		background: transparent;
 		border: 1.5px dashed var(--border-color);
 		border-radius: var(--radius-md);
-		font-size: 0.7rem;
+		font-size: 0.65rem;
 		font-weight: 500;
 		color: var(--fg-muted);
 		cursor: pointer;
@@ -474,8 +507,12 @@
 	}
 
 	.add-viewpoint-btn svg {
-		width: 14px;
-		height: 14px;
+		width: 12px;
+		height: 12px;
+	}
+
+	.add-viewpoint-btn .btn-label {
+		display: inline;
 	}
 
 	.add-viewpoint-btn:hover {
@@ -483,36 +520,46 @@
 		border-color: var(--accent-500);
 		border-style: solid;
 		color: var(--accent-400);
-		transform: translateY(-1px);
-		box-shadow: 0 0 12px rgba(134, 179, 0, 0.15);
 	}
 
-	.reset-btn {
+	/* Icon-only buttons */
+	.icon-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.375rem;
-		padding: 0.5rem 0.625rem;
+		width: 26px;
+		height: 26px;
+		padding: 0;
 		background: transparent;
 		border: 1px solid var(--border-color);
-		border-radius: var(--radius-md);
-		font-size: 0.7rem;
-		font-weight: 500;
+		border-radius: var(--radius-sm);
 		color: var(--fg-muted);
 		cursor: pointer;
 		transition: all var(--transition-bounce);
+		flex-shrink: 0;
 	}
 
-	.reset-btn svg {
-		width: 14px;
-		height: 14px;
+	.icon-btn svg {
+		width: 12px;
+		height: 12px;
 	}
 
-	.reset-btn:hover {
-		background: rgba(134, 179, 0, 0.1);
+	.icon-btn:hover {
+		background: rgba(134, 179, 0, 0.12);
 		border-color: var(--accent-500);
 		color: var(--accent-400);
-		transform: translateY(-1px);
+	}
+
+	.icon-btn.share-url-btn:hover {
+		background: rgba(0, 180, 216, 0.12);
+		border-color: #00b4d8;
+		color: #00b4d8;
+	}
+
+	.icon-btn.share-url-btn.copied {
+		background: rgba(134, 179, 0, 0.15);
+		border-color: var(--accent-500);
+		color: var(--accent-400);
 	}
 
 	/* Input group */

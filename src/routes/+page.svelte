@@ -882,6 +882,7 @@
 	onClose={handleClosePopup}
 	isViewpoint={selectedServerInfo ? settings.viewpointServers.includes(selectedServerInfo.host) : false}
 	onToggleViewpoint={handleToggleViewpoint}
+	viewpointServers={settings.viewpointServers}
 />
 
 <!-- Login Modal -->
