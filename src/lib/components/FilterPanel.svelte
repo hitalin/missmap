@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { DEFAULT_FILTER, type ServerFilter, type ServerScale, type RegistrationStatus, type EmailRequirement, type AgeRestriction } from '$lib/types';
+	import { DEFAULT_FILTER, type ServerFilter, type ServerScale, type RegistrationStatus, type EmailRequirement, type AgeRestriction, type VersionTrack } from '$lib/types';
+	import { getVersionTrackLabel } from '$lib/collector';
 
 	let {
 		filter = $bindable(DEFAULT_FILTER),
@@ -40,6 +41,17 @@
 		{ value: '18+', label: '未成年不可' }
 	];
 
+	// バージョン追従度（新しい順）
+	const versionTrackOptions: VersionTrack[] = [
+		'cal2026',
+		'cal2025',
+		'cal2024',
+		'cal2023',
+		'v13',
+		'v12-',
+		'unknown'
+	];
+
 	function toggleScale(value: ServerScale) {
 		if (filter.scale.includes(value)) {
 			filter.scale = filter.scale.filter((s) => s !== value);
@@ -53,6 +65,14 @@
 			filter.registrationStatus = filter.registrationStatus.filter((s) => s !== value);
 		} else {
 			filter.registrationStatus = [...filter.registrationStatus, value];
+		}
+	}
+
+	function toggleVersionTrack(value: VersionTrack) {
+		if (filter.versionTracks.includes(value)) {
+			filter.versionTracks = filter.versionTracks.filter((v) => v !== value);
+		} else {
+			filter.versionTracks = [...filter.versionTracks, value];
 		}
 	}
 </script>
@@ -133,6 +153,23 @@
 					aria-label="{label}の規模フィルター"
 				>
 					{label}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section>
+		<h4>バージョン追従度</h4>
+		<div class="chip-group">
+			{#each versionTrackOptions as track}
+				<button
+					class="filter-chip"
+					class:active={filter.versionTracks.includes(track)}
+					onclick={() => toggleVersionTrack(track)}
+					aria-pressed={filter.versionTracks.includes(track)}
+					aria-label="{getVersionTrackLabel(track)}のバージョン追従度フィルター"
+				>
+					{getVersionTrackLabel(track)}
 				</button>
 			{/each}
 		</div>

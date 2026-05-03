@@ -18,9 +18,10 @@
 		type RegistrationStatus,
 		type EmailRequirement,
 		type AgeRestriction,
-		type EdgeVisibility
+		type EdgeVisibility,
+		type VersionTrack
 	} from '$lib/types';
-	import { getServerScale, type ServerInfo } from '$lib/collector';
+	import { getServerScale, getVersionTrack, type ServerInfo } from '$lib/collector';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -42,6 +43,28 @@
 	const REPO_URL_TO_SHORTCUT = Object.fromEntries(
 		Object.entries(REPO_SHORTCUTS).map(([k, v]) => [v, k])
 	);
+
+	// バージョン追従度の短縮形（URL → 内部値）
+	const VERSION_TRACK_FROM_SHORTCUT: Record<string, VersionTrack> = {
+		'v12': 'v12-',
+		'v13': 'v13',
+		'2023': 'cal2023',
+		'2024': 'cal2024',
+		'2025': 'cal2025',
+		'2026': 'cal2026',
+		'?': 'unknown'
+	};
+
+	// バージョン追従度の短縮形（内部値 → URL）
+	const VERSION_TRACK_TO_SHORTCUT: Record<VersionTrack, string> = {
+		'v12-': 'v12',
+		'v13': 'v13',
+		'cal2023': '2023',
+		'cal2024': '2024',
+		'cal2025': '2025',
+		'cal2026': '2026',
+		'unknown': '?'
+	};
 
 	// URLクエリパラメータからフィルター状態を読み込む
 	function parseFilterFromQuery(params: URLSearchParams): Partial<ServerFilter> {
@@ -93,6 +116,15 @@
 				// 短縮形ならフルURLに変換
 				return REPO_SHORTCUTS[r.toLowerCase()] || decodeURIComponent(r);
 			});
+		}
+
+		// バージョン追従度（短縮形、~区切り）
+		const ver = params.get('ver');
+		if (ver) {
+			const tracks = ver.split('~')
+				.map(v => VERSION_TRACK_FROM_SHORTCUT[v])
+				.filter((t): t is VersionTrack => t !== undefined);
+			if (tracks.length > 0) filter.versionTracks = tracks;
 		}
 
 		// エッジ表示設定（短縮形: fed/blk/sus/cok/cng、~区切り、非表示のもののみ指定）
@@ -185,6 +217,12 @@
 				return REPO_URL_TO_SHORTCUT[url] || encodeURIComponent(url);
 			});
 			params.set('soft', shortRepos.join('~'));
+		}
+
+		// バージョン追従度（短縮形、~区切り）
+		if (filter.versionTracks.length > 0) {
+			const shortTracks = filter.versionTracks.map(t => VERSION_TRACK_TO_SHORTCUT[t]);
+			params.set('ver', shortTracks.join('~'));
 		}
 
 		// 視点サーバー（複数のfromパラメータ、デフォルトと異なる場合のみ）
@@ -799,6 +837,12 @@
 			if (filter.scale.length > 0) {
 				const scale: ServerScale = getServerScale(server.usersCount);
 				if (!filter.scale.includes(scale)) return false;
+			}
+
+			// バージョン追従度
+			if (filter.versionTracks.length > 0) {
+				const track = getVersionTrack(server.softwareVersion);
+				if (!filter.versionTracks.includes(track)) return false;
 			}
 
 			return true;

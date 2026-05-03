@@ -1,6 +1,20 @@
 export type AgeRestriction = 'all' | '13+' | '18+' | 'unknown';
 export type ServerScale = 'large' | 'medium' | 'small';
 
+// Misskey本家バージョンの追従度
+// v12-: v12以前のセマンティックバージョニング
+// v13: v13系セマンティックバージョニング
+// cal{YYYY}: カレンダーバージョニング（YYYY.MM.patch）
+// unknown: 判定不能
+export type VersionTrack =
+	| 'v12-'
+	| 'v13'
+	| 'cal2023'
+	| 'cal2024'
+	| 'cal2025'
+	| 'cal2026'
+	| 'unknown';
+
 // 新規登録の状態（複数選択可能）
 export type RegistrationStatus = 'open' | 'approval' | 'invite' | 'closed';
 
@@ -40,6 +54,9 @@ export interface ServerFilter {
 	// 規模
 	scale: ServerScale[];
 
+	// バージョン追従度（複数選択可能）
+	versionTracks: VersionTrack[];
+
 	// エッジ表示設定
 	edgeVisibility: EdgeVisibility;
 }
@@ -50,6 +67,7 @@ export const DEFAULT_FILTER: ServerFilter = {
 	ageRestriction: null,
 	repositoryUrls: [],
 	scale: [],
+	versionTracks: [],
 	edgeVisibility: { ...DEFAULT_EDGE_VISIBILITY }
 };
 

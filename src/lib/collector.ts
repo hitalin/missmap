@@ -1,3 +1,5 @@
+import type { VersionTrack } from './types';
+
 // バニラMisskeyのリポジトリURL
 const VANILLA_MISSKEY_REPO = 'https://github.com/misskey-dev/misskey';
 
@@ -118,6 +120,58 @@ const SUPPORTED_SOFTWARE = ['misskey'];
 
 // バニラMisskeyのバージョンパターン（例: 2024.11.0, 2025.1.0）
 const VANILLA_VERSION_PATTERN = /^\d{4}\.\d{1,2}\.\d+$/;
+
+/**
+ * softwareVersion からMisskey本家バージョンの追従度を判定
+ *
+ * カレンダーバージョニング（YYYY.MM.patch）が優先。
+ * `2024.11.0-yami.1` のようなフォーク版もプレフィックスマッチで拾う。
+ * それで合わなければ v13系以前のセマンティックバージョニングとして判定。
+ */
+export function getVersionTrack(version: string | null): VersionTrack {
+	if (!version) return 'unknown';
+
+	const calMatch = version.match(/^(\d{4})\.\d{1,2}\./);
+	if (calMatch) {
+		const year = parseInt(calMatch[1], 10);
+		if (year === 2023) return 'cal2023';
+		if (year === 2024) return 'cal2024';
+		if (year === 2025) return 'cal2025';
+		if (year === 2026) return 'cal2026';
+		return 'unknown';
+	}
+
+	const semverMatch = version.match(/^(\d+)\./);
+	if (semverMatch) {
+		const major = parseInt(semverMatch[1], 10);
+		if (major === 13) return 'v13';
+		if (major < 13) return 'v12-';
+	}
+
+	return 'unknown';
+}
+
+/**
+ * バージョン追従度の表示ラベル
+ */
+export function getVersionTrackLabel(track: VersionTrack): string {
+	switch (track) {
+		case 'v12-':
+			return 'v12以前';
+		case 'v13':
+			return 'v13';
+		case 'cal2023':
+			return '2023';
+		case 'cal2024':
+			return '2024';
+		case 'cal2025':
+			return '2025';
+		case 'cal2026':
+			return '2026';
+		case 'unknown':
+			return '不明';
+	}
+}
 
 /**
  * バニラMisskeyかどうかを判定
