@@ -418,7 +418,7 @@
 				settings.viewpointServers = queryViewpoints;
 			} else {
 				// URLクエリがなければローカルストレージを読み込み
-				const saved = localStorage.getItem('missmap_settings');
+				const saved = localStorage.getItem('misspace_settings');
 				if (saved) {
 					try {
 						const parsed = JSON.parse(saved);
@@ -511,7 +511,7 @@
 		// settingsへの明示的な参照で依存関係を作成
 		const currentSettings = JSON.stringify(settings);
 		if (browser && initialized) {
-			localStorage.setItem('missmap_settings', currentSettings);
+			localStorage.setItem('misspace_settings', currentSettings);
 		}
 	});
 
@@ -687,11 +687,11 @@
 				? `視点: ${viewpointUrls.join(', ')}`
 				: '';
 			// マップURLも視点サーバー付きで構築
-			const mapUrl = new URL(browser ? window.location.origin : 'https://missmap.pages.dev');
+			const mapUrl = new URL(browser ? window.location.origin : 'https://misspace.pages.dev');
 			for (const vp of settings.viewpointServers) {
 				mapUrl.searchParams.append('from', vp);
 			}
-			const text = `🗺️ Missmap - Misskey連合マップ\n\n${viewpointText}\n\n${mapUrl.toString()}\n\n#Missmap #Fediverse`;
+			const text = `🗺️ Misspace - Misskey連合マップ\n\n${viewpointText}\n\n${mapUrl.toString()}\n\n#Misspace #Fediverse`;
 
 			// APIを通じて直接投稿（画像付き）
 			const res = await fetch('/api/share', {
@@ -851,13 +851,13 @@
 </script>
 
 <svelte:head>
-	<title>みすまっぷ</title>
+	<title>みすぺーす</title>
 	<meta name="description" content="Misskeyサーバーの連合関係を視覚的に表示するインタラクティブマップ" />
 </svelte:head>
 
 <div class="page">
 	<!-- GitHub Corner -->
-	<a href="https://github.com/yamisskey-dev/missmap" target="_blank" rel="noopener noreferrer" class="github-corner" aria-label="View source on GitHub">
+	<a href="https://github.com/yamisskey-dev/misspace" target="_blank" rel="noopener noreferrer" class="github-corner" aria-label="View source on GitHub">
 		<svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true">
 			<path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" />
 			<path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" class="octo-arm" />

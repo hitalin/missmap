@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { parseSession } from '$lib/auth';
 
 export const GET: RequestHandler = async ({ cookies }) => {
-	const sessionCookie = cookies.get('missmap_session');
+	const sessionCookie = cookies.get('misspace_session');
 	const session = parseSession(sessionCookie);
 
 	if (!session) {

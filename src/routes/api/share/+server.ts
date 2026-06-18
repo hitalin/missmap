@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { parseSession } from '$lib/auth';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
-	const sessionCookie = cookies.get('missmap_session');
+	const sessionCookie = cookies.get('misspace_session');
 	const session = parseSession(sessionCookie);
 
 	if (!session) {
@@ -48,20 +48,20 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 			// Misskeyのドライブにアップロード
 			// CF Workers互換: Uint8ArrayからFileを作成
-			const fileName = `missmap-${Date.now()}.${extension}`;
+			const fileName = `misspace-${Date.now()}.${extension}`;
 			const file = new File([bytes as BlobPart], fileName, { type: mimeType });
 			const formData = new FormData();
 			formData.append('i', token);
 			formData.append('file', file);
 			formData.append('name', fileName);
-			formData.append('comment', 'Missmap Federation Graph');
+			formData.append('comment', 'Misspace Federation Graph');
 
 			console.log('Uploading to:', `https://${host}/api/drive/files/create`);
 
 			const uploadRes = await fetch(`https://${host}/api/drive/files/create`, {
 				method: 'POST',
 				headers: {
-					'User-Agent': 'Missmap/1.0 (https://missmap.pages.dev)'
+					'User-Agent': 'Misspace/1.0 (https://misspace.pages.dev)'
 				},
 				body: formData
 			});
@@ -105,7 +105,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'User-Agent': 'Missmap/1.0 (https://missmap.pages.dev)'
+				'User-Agent': 'Misspace/1.0 (https://misspace.pages.dev)'
 			},
 			body: JSON.stringify(noteBody)
 		});

@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { seedServer } = body;
 
 	// セッションから認証情報を取得
-	const session = parseSession(cookies.get('missmap_session'));
+	const session = parseSession(cookies.get('misspace_session'));
 	// ユーザーが自分のサーバーにリクエストする場合のみトークンを使用（大文字小文字無視）
 	const authToken =
 		session && session.host.toLowerCase() === seedServer?.toLowerCase()
@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'User-Agent': 'missmap/1.0 (Fediverse Map)'
+					'User-Agent': 'misspace/1.0 (Fediverse Map)'
 				},
 				body: JSON.stringify(requestBody)
 			});
@@ -148,7 +148,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'User-Agent': 'missmap/1.0 (Fediverse Map)'
+					'User-Agent': 'misspace/1.0 (Fediverse Map)'
 				},
 				body: JSON.stringify(blockedRequestBody)
 			});

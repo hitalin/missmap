@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+				'User-Agent': 'misspace/1.0 (Fediverse Map)'
 			},
 			body: JSON.stringify({ appSecret, token })
 		});
@@ -81,7 +81,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			token: hashedToken
 		});
 
-		cookies.set('missmap_session', sessionData, {
+		cookies.set('misspace_session', sessionData, {
 			path: '/',
 			httpOnly: true,
 			secure: !dev,

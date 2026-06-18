@@ -27,7 +27,7 @@ async function checkConnectivity(
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'User-Agent': 'Missmap/1.0 (https://missmap.pages.dev)'
+				'User-Agent': 'Misspace/1.0 (https://misspace.pages.dev)'
 			},
 			body: JSON.stringify({ host: target }),
 			signal: controller.signal

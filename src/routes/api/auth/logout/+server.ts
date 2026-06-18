@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ cookies }) => {
 	// セッションCookieを削除
-	cookies.delete('missmap_session', { path: '/' });
+	cookies.delete('misspace_session', { path: '/' });
 
 	return json({ success: true });
 };

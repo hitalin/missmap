@@ -7,7 +7,7 @@
 	onMount(async () => {
 		const urlParams = new URLSearchParams(window.location.search);
 		const token = urlParams.get('token');
-		const host = localStorage.getItem('missmap_auth_host');
+		const host = localStorage.getItem('misspace_auth_host');
 
 		if (!token || !host) {
 			error = '認証情報が見つかりません';
@@ -28,7 +28,7 @@
 				return;
 			}
 
-			localStorage.removeItem('missmap_auth_host');
+			localStorage.removeItem('misspace_auth_host');
 			goto('/', { replaceState: true });
 		} catch {
 			error = '通信エラーが発生しました';
@@ -37,7 +37,7 @@
 </script>
 
 <svelte:head>
-	<title>認証中... | missmap</title>
+	<title>認証中... | misspace</title>
 </svelte:head>
 
 <div class="callback-container">

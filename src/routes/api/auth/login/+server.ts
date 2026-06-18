@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import type { MiAuthSession } from '$lib/types';
 import { getAppSecret, setAppSecret, deleteAppSecret } from '$lib/auth';
 
-const APP_NAME = 'missmap';
+const APP_NAME = 'misspace';
 const APP_DESCRIPTION = 'Fediverse連合マップ - あなたの宇宙を探索しよう';
 const PERMISSIONS = ['read:account', 'read:federation', 'write:notes', 'write:drive'];
 
@@ -17,7 +17,7 @@ async function isMisskeyInstance(host: string): Promise<{ isMisskey: boolean; er
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+				'User-Agent': 'misspace/1.0 (Fediverse Map)'
 			},
 			body: JSON.stringify({}),
 			signal: controller.signal
@@ -86,7 +86,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'User-Agent': 'missmap/1.0 (Fediverse Map)'
+					'User-Agent': 'misspace/1.0 (Fediverse Map)'
 				},
 				body: JSON.stringify({
 					name: APP_NAME,
@@ -115,7 +115,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'User-Agent': 'missmap/1.0 (Fediverse Map)'
+				'User-Agent': 'misspace/1.0 (Fediverse Map)'
 			},
 			body: JSON.stringify({ appSecret })
 		});

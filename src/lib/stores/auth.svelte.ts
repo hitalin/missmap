@@ -51,7 +51,7 @@ export async function startLogin(host: string): Promise<{ success: boolean; url?
 		}
 
 		// ホストを保存（コールバックで使用）
-		localStorage.setItem('missmap_auth_host', host);
+		localStorage.setItem('misspace_auth_host', host);
 
 		return { success: true, url: data.url };
 	} catch {
